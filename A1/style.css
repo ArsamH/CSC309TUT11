@@ -27,7 +27,6 @@ header {
   display: flex;
   background-color: #333333;
   width: 100%;
-  position: fixed;
   top: 0;
   left: 0;
   height: 68px;
@@ -195,7 +194,7 @@ main summary {
   padding: 0.5rem;
   text-align: center;
   margin-bottom: 0;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .embed-container {
@@ -203,6 +202,7 @@ main summary {
   max-width: 720px;
   height: 60vh;
   margin: 0;
+  margin-top: 16px;
 }
 
 .embed-container embed {
@@ -210,8 +210,4 @@ main summary {
   height: 100%;
   border: none;
   overflow: hidden;
-}
-
-.index main {
-  padding-top: 196px;
 }
