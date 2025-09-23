@@ -45,11 +45,7 @@ header {
   font-weight: bold;
 }
 
-.navbar .current a:hover {
-  color: white;
-}
-
-a:hover {
+.navbar a:hover {
   color: white;
 }
 
@@ -129,7 +125,7 @@ main .introduction p {
   margin-right: 8px;
 }
 
-main a {
+.introduction a {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +140,7 @@ main a {
   border-radius: 4px;
 }
 
-main a:hover {
+.introduction a:hover {
   background-color: #007ea8;
   color: white;
   border-color: white;
@@ -211,4 +207,55 @@ main summary {
   height: 100%;
   border: none;
   overflow: hidden;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.contact-info a {
+  font-family: "Times New Roman", Times, serif;
+  text-align: center;
+  font-weight: 700 bold;
+  font-size: 32px;
+  color: #0000ee;
+  padding-bottom: 2rem;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  gap: 16px;
+}
+
+.feedback-form input[type="email"],
+.feedback-form input[type="file"],
+.feedback-form textarea {
+  padding: 0.8rem;
+  font-family: sans-serif;
+  width: 100%;
+}
+
+.checkbox-container input[type="checkbox"] {
+  transform: scale(1.5);
+  margin-right: 0.5rem;
+}
+
+.form-field {
+  width: 779px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-field label {
+  padding-top: 16px;
+  padding-right: 16px;
+  padding-left: 16px;
 }

@@ -6,13 +6,65 @@
   Fall 2025
 -->
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSC309 A1 - Contact</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <!-- TODO: complete me -->
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSC309 A1 - Contact</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="navbar">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="about.html">About</a></li>
+          <li class="current"><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </header>
+    <main>
+      <div class="picture-frame">
+        <img src="ArsamPortrait.jpg" class="picture" />
+      </div>
+      <div class="contact-info">
+        <h1>Muhammad Arsam Hassan</h1>
+        <a href="mailto:arsam.hassan@mail.utoronto.ca"
+          >arsam.hassan@mail.utoronto.ca</a
+        >
+      </div>
+      <div
+        class="feedback-form"
+        action="https://postman-echo.com/post"
+        method="post"
+      >
+        <div class="form-field">
+          <label>Your Email: </label>
+          <input type="email" id="email" name="email" required />
+        </div>
+
+        <div class="form-field">
+          <label>Feedback: </label>
+          <textarea
+            id="feedback"
+            name="feedback"
+            rows="4"
+            placeholder="Enter your feedback here"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label>Attachment</label>
+          <input type="file" id="attachment" name="attachments" required />
+        </div>
+
+        <div class="checkbox-container">
+          <input type="checkbox" id="checkbox" name="consent" required />
+          <label>You agree to receive emails from me</label>
+        </div>
+      </div>
+    </main>
+
+    <footer><p>Copyright 2025 by hass1046.</p></footer>
+  </body>
 </html>
