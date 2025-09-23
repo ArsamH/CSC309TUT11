@@ -151,6 +151,7 @@ main a:hover {
 }
 
 main .about {
+  margin-top: 0;
   font-weight: 700;
   font-size: 48px;
   margin-bottom: 0;
