@@ -17,7 +17,7 @@ body {
   background-color: #bbbbbb;
   font-family: sans-serif;
   margin: 0;
-  height: 100%;
+  min-height: 100vh;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -86,7 +86,7 @@ footer p {
 }
 
 main {
-  padding-top: 196px;
+  padding-top: 128px;
   padding-bottom: 128px;
   display: flex;
   flex-direction: column;
@@ -170,6 +170,7 @@ main summary {
   list-style: none;
   margin-bottom: 1rem;
   padding-bottom: 0;
+  text-align: center;
 }
 
 .class-list ul {
@@ -192,6 +193,9 @@ main summary {
   font-size: 16px;
   font-weight: 400;
   padding: 0.5rem;
+  text-align: center;
+  margin-bottom: 0;
+  margin-top: 24px;
 }
 
 .embed-container {
@@ -206,4 +210,8 @@ main summary {
   height: 100%;
   border: none;
   overflow: hidden;
+}
+
+.index main {
+  padding-top: 196px;
 }
