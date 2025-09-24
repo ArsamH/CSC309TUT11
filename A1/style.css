@@ -336,15 +336,13 @@ main summary {
     padding-right: 0.5rem;
     box-sizing: border-box;
     width: 100%;
+    gap: 16px;
   }
 
   .form-field {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .form-field label {
-    margin-bottom: 8px;
+    gap: 8px;
   }
 
   .feedback-form input[type="email"],
@@ -362,6 +360,7 @@ main summary {
 
   .checkbox-container input[type="checkbox"] {
     margin-left: 0;
+    margin-bottom: 0;
   }
 
   .feedback-form .checkbox-container label {
