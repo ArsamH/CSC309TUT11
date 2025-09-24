@@ -252,15 +252,25 @@ main summary {
   display: block;
   padding: 0.8rem;
   font-family: sans-serif;
-  width: 648px;
+  width: 587px;
   border: none;
+  border-radius: 3px;
+  border: 1px #dddddd;
 }
 
 .form-field {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 16px;
   align-items: center;
+}
+
+.feedback-label {
+  align-items: flex-start;
+}
+
+.feedback-label label {
+  margin-top: 12px;
 }
 
 .form-field input[type="file"] {
@@ -271,6 +281,7 @@ main summary {
   display: block;
   font-family: sans-serif;
   width: 275px;
+  text-align: left;
 }
 
 .checkbox-container input[type="checkbox"] {
@@ -284,6 +295,7 @@ main summary {
   align-items: center;
   height: 51px;
   gap: 16px;
+  margin-top: 9px;
 }
 
 #checkbox {
@@ -325,6 +337,7 @@ main summary {
   font-weight: bold;
   font-size: 16px;
   color: #333333;
+  text-align: right;
 }
 
 @media (max-width: 480px) {
@@ -343,6 +356,7 @@ main summary {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+    margin: 0;
   }
 
   .feedback-form input[type="email"],
@@ -354,20 +368,23 @@ main summary {
   }
 
   .checkbox-container {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
   }
 
   .checkbox-container input[type="checkbox"] {
     margin-left: 0;
     margin-bottom: 0;
+    margin-top: 0;
   }
 
   .feedback-form .checkbox-container label {
-    width: 100%;
+    width: auto;
   }
 
   .feedback-form .send-feedback button {
     margin-left: 0;
+    margin-top: 15px;
   }
 }
