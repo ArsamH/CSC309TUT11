@@ -382,6 +382,7 @@ main summary {
 
   .feedback-form .checkbox-container label {
     width: auto;
+    margin-top: -5px;
   }
 
   .feedback-form .send-feedback button {
