@@ -214,20 +214,23 @@ main summary {
   flex-direction: column;
   align-items: center;
   color: #333333;
+  text-align: center;
 }
 
 .contact-info h1 {
   font-size: 48px;
   font-weight: bold;
+  margin-bottom: 16px;
 }
 
 .contact-info a {
+  margin-top: 0;
   font-family: "Times New Roman", Times, serif;
   text-align: center;
   font-weight: bold;
   font-size: 32px;
   color: #0000ee;
-  padding-bottom: 2rem;
+  padding-bottom: 24px;
   text-decoration: none;
 }
 
@@ -235,10 +238,10 @@ main summary {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
+  padding: 0 8px;
   gap: 16px;
-  width: 780px;
+  width: 100%;
+  max-width: 780px;
   align-items: flex-end;
   font-family: sans-serif;
 }
@@ -322,4 +325,50 @@ main summary {
   font-weight: bold;
   font-size: 16px;
   color: #333333;
+}
+
+@media (max-width: 480px) {
+  .form-field,
+  .checkbox-container,
+  .send-feedback,
+  .feedback-form {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .form-field {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .form-field label {
+    margin-bottom: 8px;
+  }
+
+  .feedback-form input[type="email"],
+  .feedback-form input[type="file"],
+  .feedback-form textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .checkbox-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .checkbox-container input[type="checkbox"] {
+    margin-left: 0;
+  }
+
+  .feedback-form .checkbox-container label {
+    width: 100%;
+  }
+
+  .feedback-form .send-feedback button {
+    margin-left: 0;
+  }
 }
