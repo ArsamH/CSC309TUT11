@@ -28,11 +28,13 @@
       </div>
       <div class="contact-info">
         <h1>Muhammad Arsam Hassan</h1>
-        <a href="mailto:arsam.hassan@mail.utoronto.ca"
-          >arsam.hassan@mail.utoronto.ca</a
+        <a
+          href="mailto:arsam.hassan@mail.utoronto.ca?subject=Bug%20Found&body=I%20found%20the%20following%20bug%20on%20your%20website:%0A%0A"
         >
+          arsam.hassan@mail.utoronto.ca
+        </a>
       </div>
-      <div
+      <form
         class="feedback-form"
         action="https://postman-echo.com/post"
         method="post"
@@ -54,7 +56,7 @@
         </div>
 
         <div class="form-field">
-          <label>Attachment</label>
+          <label>Attachment:</label>
           <input type="file" id="attachment" name="attachments" required />
         </div>
 
@@ -62,7 +64,11 @@
           <input type="checkbox" id="checkbox" name="consent" required />
           <label>You agree to receive emails from me</label>
         </div>
-      </div>
+
+        <div class="send-feedback">
+          <button type="submit">Send Feedback</button>
+        </div>
+      </form>
     </main>
 
     <footer><p>Copyright 2025 by hass1046.</p></footer>
