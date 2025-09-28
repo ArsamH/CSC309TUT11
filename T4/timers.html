@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html> 
+<head> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSC309: Tutorial 4</title>
+  <link rel="stylesheet" href="timers.css">
+  <script src="timers.js"></script>
+</head>
+<body> 
+<div class="container">
+  <header>CSC309: Tutorial 4, Fall 2025</header>
+  <div id="sidebar">
+  <fieldset>
+    <legend>Add New Timer</legend>
+    <form onsubmit="return create_timer(event, this);">
+      <label>Name:</label>
+      <input type="text" name="name" value="Untitled Timer" autocomplete="off" required>
+      <label>Time:</label>
+      <div>
+        <input type="number" name="minutes" value="1" required>
+        <span>:</span>
+        <input type="number" name="seconds" value="00" required>
+      </div>
+      <div></div><div><input type="submit" value="Create"></div>
+      <div></div><p class="error"></p>
+    </form>
+  </fieldset>
+  <fieldset>
+    <legend>Statistics</legend>
+    <dl>
+      <dt>Number of active timers:</dt><dd id="num_active_timers">0</dd>
+      <dt>Number of expired timers:</dt><dd id="num_expired_timers">0</dd>
+      <dt>Average remaining time (seconds):</dt><dd id="avg_remain_time">0</dd>
+    </dl>
+  </fieldset>
+  <fieldset>
+    <legend>Actions</legend>
+    <form onsubmit="return extend_all_timers(event, this);">
+      <label>Extend All Timers:</label>
+      <div><input type="submit" value="Extend"> by <input type="number" name="seconds" value="30" required> seconds.</div>
+      <div></div><p class="error"></p>
+      <label>Clear Expired Timers:</label>
+      <div><button onclick="clear_expired_timers(event);">Clear</button></div>
+    </form>
+  </fieldset>
+  </div>
+  <h1 id="title">Countdown Timers</h1>
+  <main id="main">
+  </main>
+  <footer>
+    &copy; CSC309, University of Toronto, Department of Computer Science, St. George Campus. 
+  </footer>
+</div>
+</body> 
+</html>

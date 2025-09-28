@@ -1,0 +1,178 @@
+* { 
+    box-sizing: border-box; 
+    padding: 0; 
+    margin: 0;
+    font-family: sans-serif;
+}
+
+body {
+    background-color: #333;
+}
+
+.container {
+    display: grid;
+    grid-template-areas: 'head head'
+                         'side title'
+                         'side main'
+                         'foot foot';
+    grid-template-columns: 600px auto;
+    grid-template-rows: auto auto 1fr 40px;
+    min-height: 100vh;
+    width: 100vw;
+    column-gap: 10px;
+}
+
+header {
+    display: flex;
+    grid-area: head;
+    color: white;
+    font-weight: bold;
+    font-size: 1.5rem;
+    align-items: center;
+    padding: 20px;
+}
+
+#title {
+    grid-area: title;
+    background-color: #eee;
+    padding: 20px;
+}
+
+main {
+    grid-area: main;
+    background-color: #eee;
+    padding: 0 20px;
+    display: inline-flex;
+    flex-flow: row wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 10px;
+}
+
+details {
+    border: 1px solid #999;
+    border-radius: 20px;
+    padding: 10px 20px;
+}
+
+details div {
+    font-size: 2rem;
+    margin: 10px auto;
+    text-align: center;
+}
+
+summary {
+    font-size: 1rem;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+    position: relative;
+    margin-right: 20px;
+}
+
+summary a {
+    position: absolute;
+    top: -3px;
+    right: -30px;
+    text-decoration: none;
+}
+
+summary a:hover {
+    transform: scale(105%);
+}
+
+summary a:active {
+    transform: translate(-1px, 1px);
+}
+
+#sidebar {
+  grid-area: side;
+  background-color: #ddd;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+fieldset {
+    margin: 20px 20px 0 20px;
+    width: calc(100% - 40px);
+}
+
+fieldset legend {
+    margin: 5px;
+    font-size: 1.25rem;
+}
+
+fieldset form, dl {
+    margin: 10px 20px 20px 20px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 15px 20px;
+}
+
+fieldset label, dt {
+    display: flex;
+    align-items: center;
+    justify-content: end;
+    font-weight: bold;
+}
+
+fieldset span {
+    font-size: 2rem;
+    transform: translateY(-0.25rem);
+}
+
+fieldset input, dd, button {
+    padding: 0.25rem 0.5rem;
+    margin: 0 0.5rem;
+    font-size: 1.5rem;
+    
+}
+
+fieldset div {
+    display: flex;
+    align-items: center;
+}
+
+fieldset input[type="number"] {
+    width: 70px;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+fieldset input[type="submit"], button {
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    background-color: #3a7896;
+    border-width: 1px;
+    color: white;
+}
+
+input[type="submit"]:hover, button:hover {
+    background-color: #244b5e;
+    cursor: pointer;
+}
+
+input[type="submit"]:active, button:active {
+    transform: translate(-1px, 1px);
+    cursor: pointer;
+}
+
+.error {
+    color: red;
+    font-style: italic;
+    margin: 0 0.5rem;
+}
+
+footer {
+  grid-area: foot;
+  color: white;
+}
+
+footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  flex-direction: column;
+}
