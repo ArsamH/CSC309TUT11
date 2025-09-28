@@ -39,27 +39,36 @@ class Timer {
      * using setInterval to update the timer value once every 1 second.
      * When the timer reaches 0, the countdown should stop. */
 
+    this.start_countdown();
+  }
+  /* TODO: Add other methods as you see fit */
+
+  start_countdown() {
     this.interval = setInterval(() => {
       if (this.seconds == 0 && this.minutes == 0) {
         this.expired = true;
         clearInterval(this.interval);
+        this.interval = null;
       } else if (this.seconds == 0) {
         this.minutes--;
         this.seconds = 59;
       } else {
         this.seconds--;
       }
-      update(this.minutes, this.seconds);
+      this.update(this.minutes, this.seconds);
       update_stats();
     }, 1000);
   }
 
-  /* TODO: Add other methods as you see fit */
   extend(seconds) {
     let total = seconds + this.seconds + this.minutes * 60;
     this.seconds = total % 60;
     this.minutes = Math.floor(total / 60);
     this.update(this.minutes, this.seconds);
+    this.expired = false;
+    if (!this.interval) {
+      this.start_countdown();
+    }
     update_stats();
   }
 
