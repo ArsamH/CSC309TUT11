@@ -86,9 +86,6 @@ app.patch("/notes/:noteId", (req, res) => {
     return res.status(404).send("Not found");
   }
   const done = req.query.done;
-  if (done !== "true" && done !== "false") {
-    return res.status(400).send("Bad request");
-  }
   const completed = done === "true";
   data[noteId] = { ...data[noteId], completed: completed };
   return res.status(200).json(data[noteId]);
