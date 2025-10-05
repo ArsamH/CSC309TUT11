@@ -40,15 +40,16 @@ const port = (() => {
 })();
 
 app.get("/notes", (req, res) => {
-  if (!req.query.done) {
-    res.json(data);
+  const done = req.query.done;
+  if (!done) {
+    return res.json(data);
   } else {
     if (done !== "true" && done !== "false") {
       return res.status(400).send("Bad request");
     }
     const completed = req.query.done === "true";
     const filtered = data.filter((value) => value.completed === completed);
-    res.json(filtered);
+    return res.json(filtered);
   }
 });
 
@@ -61,7 +62,7 @@ app.post("/notes", (req, res) => {
 
   data.push(newVal);
 
-  res.status(201).json(newVal);
+  return res.status(201).json(newVal);
 });
 
 app.get("/notes/:noteId", (req, res) => {
@@ -71,7 +72,7 @@ app.get("/notes/:noteId", (req, res) => {
   } else if (noteId < 0 || noteId >= data.length) {
     return res.status(404).send("Not found");
   } else {
-    res.json(data[noteId]);
+    return res.json(data[noteId]);
   }
 });
 
@@ -79,15 +80,15 @@ app.patch("/notes/:noteId", (req, res) => {
   const noteId = Number(req.params.noteId);
   const done = req.query.done;
   if (done !== "true" && done !== "false") {
-    res.status(400).send("Bad request");
+    return res.status(400).send("Bad request");
   }
 
   if (noteId < 0 || noteId >= data.length) {
-    res.status(404).send("Not found");
+    return res.status(404).send("Not found");
   }
   const completed = done === "true";
   data[noteId] = { ...data[noteId], completed: completed };
-  res.status(200).json(data[noteId]);
+  return res.status(200).json(data[noteId]);
 });
 
 const server = app.listen(port, () => {
