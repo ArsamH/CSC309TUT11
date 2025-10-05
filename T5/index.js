@@ -59,7 +59,7 @@ app.post("/notes", (req, res) => {
   data.push(req.body);
 
   const responseVal = structuredClone(req.body);
-  responseVal.id = data.length;
+  responseVal.id = data.length - 1;
 
   return res.status(201).json(responseVal);
 });
