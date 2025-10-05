@@ -58,7 +58,7 @@ app.post("/notes", (req, res) => {
 
   const newVal = structuredClone(req.body);
 
-  newVal.id = data.length;
+  //   newVal.id = data.length;
 
   data.push(newVal);
 
