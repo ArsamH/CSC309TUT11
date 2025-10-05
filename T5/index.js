@@ -56,13 +56,12 @@ app.get("/notes", (req, res) => {
 app.post("/notes", (req, res) => {
   console.log(req.body);
 
-  const newVal = structuredClone(req.body);
+  data.push(req.body);
 
-  //   newVal.id = data.length;
+  const responseVal = structuredClone(req.body);
+  responseVal.id = data.length;
 
-  data.push(newVal);
-
-  return res.status(201).json(newVal);
+  return res.status(201).json(responseVal);
 });
 
 app.get("/notes/:noteId", (req, res) => {
