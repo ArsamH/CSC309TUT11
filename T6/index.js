@@ -221,6 +221,19 @@ app.patch("/notes/:noteId", basicAuth, async (req, res) => {
       return res.status(400).json({ message: "Invalid payload" });
     }
 
+    if (completed !== undefined && typeof completed !== "boolean") {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+    if (isPublic !== undefined && typeof isPublic !== "boolean") {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+    if (title !== undefined && typeof title !== "string") {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+    if (description !== undefined && typeof description !== "string") {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+
     const newNote = {};
     if (title !== undefined) {
       newNote.title = title;
@@ -251,7 +264,7 @@ app.patch("/notes/:noteId", basicAuth, async (req, res) => {
 
     return res.status(200).json(response);
   } catch {
-    return res.status(500).send({ message: "error" });
+    return res.status(500).json({ message: "error" });
   }
 });
 
