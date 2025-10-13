@@ -91,7 +91,7 @@ app.get("/notes", async (req, res) => {
     });
   }
 
-  notes.map((note) => ({
+  const response = notes.map((note) => ({
     id: note.id,
     title: note.title,
     description: note.description,
@@ -100,7 +100,7 @@ app.get("/notes", async (req, res) => {
     userId: note.authorId,
   }));
 
-  return res.status(200).json(notes);
+  return res.status(200).json(response);
 });
 
 app.post("/notes", basicAuth, async (req, res) => {
@@ -198,6 +198,15 @@ app.patch("/notes/:noteId", basicAuth, async (req, res) => {
   }
 
   const { title, description, completed, public: isPublic } = req.body;
+
+  if (
+    title === undefined &&
+    description === undefined &&
+    completed === undefined &&
+    isPublic === undefined
+  ) {
+    return res.status(400).json({ message: "Invalid payload" });
+  }
 
   try {
     const note = await prisma.note.findUnique({
