@@ -90,6 +90,16 @@ app.get("/notes", async (req, res) => {
       where: { public: true },
     });
   }
+
+  notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    description: note.description,
+    completed: note.completed,
+    public: note.public,
+    userId: note.authorId,
+  }));
+
   return res.status(200).json(notes);
 });
 
