@@ -197,17 +197,6 @@ app.patch("/notes/:noteId", basicAuth, async (req, res) => {
     return res.status(404).json({ message: "Not found" });
   }
 
-  const { title, description, completed, public: isPublic } = req.body;
-
-  if (
-    title === undefined &&
-    description === undefined &&
-    completed === undefined &&
-    isPublic === undefined
-  ) {
-    return res.status(400).json({ message: "Invalid payload" });
-  }
-
   try {
     const note = await prisma.note.findUnique({
       where: { id: noteId },
@@ -219,6 +208,17 @@ app.patch("/notes/:noteId", basicAuth, async (req, res) => {
 
     if (note.authorId !== req.user.id) {
       return res.status(403).json({ message: "Not permitted" });
+    }
+
+    const { title, description, completed, public: isPublic } = req.body;
+
+    if (
+      title === undefined &&
+      description === undefined &&
+      completed === undefined &&
+      isPublic === undefined
+    ) {
+      return res.status(400).json({ message: "Invalid payload" });
     }
 
     const newNote = {};
