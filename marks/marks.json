@@ -1,8 +1,9 @@
 {
-    "total_points": 32.00833333333333,
-    "total_available_points": 39,
+    "comment": "Well done! Keep it up. Attending the tutorials is the best strategy to improve your understanding of the course materials and get the tutorial exercises completed. ",
+    "total_points": 26.263333333333335,
+    "total_available_points": 32.7,
     "in_lecture_exercises": {
-        "marks_earned": 6.383333333333334,
+        "marks_earned": 0.6383333333333333,
         "notes": "Each lecture exercise is out of 0.1% and we are taking the best 10 out of 12. For now, we have 7 lecture exercises in total. So there's no need to take best 10 out of 12.",
         "details": {
             "lecture_1_exercise": 88.88888888888889,
