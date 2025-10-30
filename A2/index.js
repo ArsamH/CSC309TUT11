@@ -26,7 +26,6 @@ const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 const { PrismaClient } = require("@prisma/client");
 const multer = require("multer");
-const path = require("path");
 
 const prisma = new PrismaClient();
 const app = express();
@@ -512,6 +511,11 @@ app.patch(
     try {
       const userId = req.auth.userId;
       const { name, email, birthday, ...extraFields } = req.body;
+
+      console.log("bopdy:", req.body);
+      console.log("file:", req.file);
+      console.log("nam,e:", name, "email:", email, "birthday:", birthday);
+      console.log("extra fields:", extraFields);
 
       if (Object.keys(extraFields).length > 0) {
         return res.status(400).json({ error: "Bad Request" });
