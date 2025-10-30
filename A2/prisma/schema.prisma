@@ -43,6 +43,7 @@ model User {
   expiresAt     DateTime?
   resetToken    String?       @unique
   avatarUrl     String?
+  usedPromotions  UserPromotion[]
 }
 
 model Transaction {
@@ -69,4 +70,16 @@ model Promotion {
   points       Int?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  usedBy       UserPromotion[]
+}
+
+model UserPromotion {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  promotionId  Int
+  usedAt       DateTime   @default(now())
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promotion    Promotion  @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promotionId])
 }

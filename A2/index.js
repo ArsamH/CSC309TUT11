@@ -402,25 +402,52 @@ app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        utorid: true,
-        name: true,
-        points: true,
-        verified: true,
-      },
+      select: { role: true },
     });
 
-    if (!user) {
+    const userSelect = {
+      id: true,
+      utorid: true,
+      name: true,
+      points: true,
+      verified: true,
+    };
+
+    if (user.role === "manager" || user.role === "superuser") {
+      userSelect.email = true;
+      userSelect.birthday = true;
+      userSelect.role = true;
+      userSelect.createdAt = true;
+      userSelect.lastLogin = true;
+      userSelect.avatarUrl = true;
+    }
+
+    const finalUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: userSelect,
+    });
+
+    if (!finalUser) {
       return res.status(404).json({ error: "Not Found" });
     }
 
     const now = new Date();
+
+    const usedPromotions = await prisma.userPromotion.findMany({
+      where: { userId },
+      select: { promotionId: true },
+    });
+
+    const usedPromotionIds = usedPromotions.map(
+      (usedPromotion) => usedPromotion.promotionId
+    );
+
     const promotions = await prisma.promotion.findMany({
       where: {
         type: "onetime",
         startTime: { lte: now },
         endTime: { gte: now },
+        id: { notIn: usedPromotionIds },
       },
       select: {
         id: true,
@@ -432,7 +459,7 @@ app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
     });
 
     res.status(200).json({
-      ...user,
+      ...finalUser,
       promotions,
     });
   } catch {
