@@ -392,6 +392,54 @@ app.get("/users", roleCheckMiddleware("manager"), async (req, res) => {
   }
 });
 
+app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        utorid: true,
+        name: true,
+        points: true,
+        verified: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Not Found" });
+    }
+
+    const now = new Date();
+    const promotions = await prisma.promotion.findMany({
+      where: {
+        type: "onetime",
+        startTime: { lte: now },
+        endTime: { gte: now },
+      },
+      select: {
+        id: true,
+        name: true,
+        minSpending: true,
+        rate: true,
+        points: true,
+      },
+    });
+
+    res.status(200).json({
+      ...user,
+      promotions,
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
