@@ -225,8 +225,12 @@ app.post("/auth/resets/:resetToken", async (req, res) => {
       where: { resetToken },
     });
 
-    if (!user || user.utorid !== utorid) {
+    if (!user) {
       return res.status(404).json({ error: "Not Found" });
+    }
+
+    if (user.utorid !== utorid) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     if (!user.expiresAt || new Date() > user.expiresAt) {
