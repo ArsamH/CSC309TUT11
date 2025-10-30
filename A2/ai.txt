@@ -1,2 +1,8 @@
 - used AI to look over my database design in schema.prisma and find potential mistakes
-- used AI to help with regex for building middleware
+
+- used AI to help with regex for all the middleware
+
+- used AI to implement multer middleware
+(link to transcript: https://claude.ai/share/dcfa3736-21c1-4db3-a364-a0ab3164872c)
+
+- 

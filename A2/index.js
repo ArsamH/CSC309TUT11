@@ -25,11 +25,40 @@ const jwtLib = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 const { PrismaClient } = require("@prisma/client");
+const multer = require("multer");
+const path = require("path");
 
 const prisma = new PrismaClient();
 const app = express();
 
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + "-" + file.originalname;
+    cb(null, uniqueName);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed!"), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 const jwtMiddleware = jwt({
   secret: process.env.JWT_SECRET,
@@ -106,6 +135,18 @@ const validatePassword = (password) => {
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   return hasUppercase && hasLowercase && hasNumber && hasSpecial;
+};
+
+const validateBirthday = (birthday) => {
+  if (typeof birthday !== "string") {
+    return false;
+  }
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(birthday)) {
+    return false;
+  }
+  const date = new Date(birthday);
+  return date instanceof Date && !isNaN(date);
 };
 
 const resetRateLimiter = new Map();
@@ -399,6 +440,151 @@ app.get("/users", roleCheckMiddleware("manager"), async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+app.get("/users/me", roleCheckMiddleware("regular"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        utorid: true,
+        name: true,
+        email: true,
+        birthday: true,
+        role: true,
+        points: true,
+        createdAt: true,
+        lastLogin: true,
+        verified: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Not Found" });
+    }
+
+    const now = new Date();
+    const usedPromotions = await prisma.userPromotion.findMany({
+      where: { userId },
+      select: { promotionId: true },
+    });
+
+    const usedPromotionIds = usedPromotions.map(
+      (usedPromotion) => usedPromotion.promotionId
+    );
+
+    const promotions = await prisma.promotion.findMany({
+      where: {
+        type: "onetime",
+        startTime: { lte: now },
+        endTime: { gte: now },
+        id: { notIn: usedPromotionIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        minSpending: true,
+        rate: true,
+        points: true,
+      },
+    });
+
+    res.status(200).json({
+      ...user,
+      birthday: user.birthday
+        ? user.birthday.toISOString().split("T")[0]
+        : null,
+      promotions,
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.patch(
+  "/users/me",
+  roleCheckMiddleware("regular"),
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const { name, email, birthday, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (
+        name === undefined &&
+        email === undefined &&
+        birthday === undefined &&
+        !req.file
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (name !== undefined && !validateName(name)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (email !== undefined && !validateEmail(email)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (birthday !== undefined && !validateBirthday(birthday)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const updateData = {};
+      if (name !== undefined) {
+        updateData.name = name;
+      }
+      if (email !== undefined) {
+        updateData.email = email;
+      }
+      if (birthday !== undefined) {
+        updateData.birthday = new Date(birthday);
+      }
+      if (req.file) {
+        updateData.avatarUrl = `/uploads/${req.file.filename}`;
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          utorid: true,
+          name: true,
+          email: true,
+          birthday: true,
+          role: true,
+          points: true,
+          createdAt: true,
+          lastLogin: true,
+          verified: true,
+          avatarUrl: true,
+        },
+      });
+
+      res.status(200).json({
+        ...updatedUser,
+        birthday: updatedUser.birthday
+          ? updatedUser.birthday.toISOString().split("T")[0]
+          : null,
+      });
+    } catch (error) {
+      if (error instanceof multer.MulterError) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 
 app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
   try {
