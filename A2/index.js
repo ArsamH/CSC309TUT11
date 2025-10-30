@@ -475,9 +475,9 @@ app.patch(
 
       const { email, verified, suspicious, role, ...extraFields } = req.body;
 
-      if (Object.keys(extraFields).length > 0) {
-        return res.status(400).json({ error: "Bad Request" });
-      }
+      // if (Object.keys(extraFields).length > 0) {
+      //   return res.status(400).json({ error: "Bad Request" });
+      // }
 
       if (
         email === undefined &&
@@ -492,11 +492,19 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (verified !== undefined && typeof verified !== "boolean") {
+      if (
+        verified !== undefined &&
+        verified !== null &&
+        typeof verified !== "boolean"
+      ) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (suspicious !== undefined && typeof suspicious !== "boolean") {
+      if (
+        suspicious !== undefined &&
+        suspicious !== null &&
+        typeof suspicious !== "boolean"
+      ) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
@@ -527,7 +535,9 @@ app.patch(
       }
       if (role === "cashier") {
         const isSus =
-          suspicious !== undefined ? suspicious : existingUser.suspicious;
+          suspicious !== undefined && suspicious !== null
+            ? suspicious
+            : existingUser.suspicious;
         if (isSus) {
           return res.status(400).json({ error: "Bad Request" });
         }
@@ -540,19 +550,19 @@ app.patch(
       };
 
       const updateData = {};
-      if (email !== undefined) {
+      if (email !== undefined && email !== null) {
         updateData.email = email;
         response.email = email;
       }
-      if (verified !== undefined) {
+      if (verified !== undefined && verified !== null) {
         updateData.verified = verified;
         response.verified = verified;
       }
-      if (suspicious !== undefined) {
+      if (suspicious !== undefined && suspicious !== null) {
         updateData.suspicious = suspicious;
         response.suspicious = suspicious;
       }
-      if (role !== undefined) {
+      if (role !== undefined && role !== null) {
         updateData.role = role;
         response.role = role;
       }
