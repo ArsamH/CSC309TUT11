@@ -479,14 +479,14 @@ app.patch(
       //   return res.status(400).json({ error: "Bad Request" });
       // }
 
-      // if (
-      //   email === undefined &&
-      //   verified === undefined &&
-      //   suspicious === undefined &&
-      //   role === undefined
-      // ) {
-      //   return res.status(400).json({ error: "Bad Request" });
-      // }
+      if (
+        email === undefined &&
+        verified === undefined &&
+        suspicious === undefined &&
+        role === undefined
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
 
       if (email !== undefined && email !== null && !validateEmail(email)) {
         return res.status(400).json({ error: "Bad Request" });
@@ -519,7 +519,7 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (req.user.role === "manager") {
+      if (req.user.role === "manager" && role !== undefined && role !== null) {
         if (role !== "regular" && role !== "cashier") {
           return res.status(403).json({ error: "Forbidden" });
         }
