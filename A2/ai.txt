@@ -1,0 +1,2 @@
+- used AI to look over my database design in schema.prisma and find potential mistakes
+- used AI to help with regex for building middleware

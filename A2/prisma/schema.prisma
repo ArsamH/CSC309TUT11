@@ -28,6 +28,112 @@ enum PromotionType {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  username String
+  id            Int           @id @default(autoincrement())
+  utorid        String        @unique
+  name          String
+  email         String        @unique
+  birthday      DateTime?
+  role          RoleType      @default(regular)
+  points        Int           @default(0)
+  verified      Boolean       @default(false)
+  suspicious    Boolean       @default(false)
+  passwordHash  String?
+  createdAt     DateTime      @default(now())
+  lastLogin     DateTime?
+  expiresAt     DateTime?
+  resetToken    String?       @unique
+  avatarUrl     String?
+
+  // special relations
+  
+  createdTransactions  Transaction[] @relation("CreatedTransactions")
+  ownedTransactions    Transaction[] @relation("OwnedTransactions")
+  processedTransactions Transaction[] @relation("ProcessedTransactions")
+  organizedEvents EventOrganizer[]
+  attendedEvents  EventGuest[]
+  usedPromotions  UserPromotion[]
+}
+
+model Transaction {
+  id            Int              @id @default(autoincrement())
+  type          TransactionType
+  amount        Int
+  spent         Float?
+  redeemed      Int?
+  relatedId     Int?
+  remark        String?
+  suspicious    Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  ownerId       Int
+  createdById   Int
+  processedById Int?
+  owner       User @relation("OwnedTransactions", fields: [ownerId], references: [id])
+  createdBy   User @relation("CreatedTransactions", fields: [createdById], references: [id])
+  processedBy User? @relation("ProcessedTransactions", fields: [processedById], references: [id])
+  promotions   TransactionPromotion[]
+}
+
+model Promotion {
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String
+  type         PromotionType
+  startTime    DateTime
+  endTime      DateTime
+  minSpending  Float?
+  rate         Float?
+  points       Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  transactions TransactionPromotion[]
+  usedBy       UserPromotion[]
+}
+
+model TransactionPromotion {
+  transactionId Int
+  promotionId   Int
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  promotion   Promotion   @relation(fields: [promotionId], references: [id])
+  @@id([transactionId, promotionId])
+}
+
+model UserPromotion {
+  userId      Int
+  promotionId Int
+  usedAt      DateTime @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
+  @@id([userId, promotionId])
+}
+
+model Event {
+  id            Int        @id @default(autoincrement())
+  name          String
+  description   String
+  location      String
+  startTime     DateTime
+  endTime       DateTime
+  capacity      Int?
+  pointsTotal   Int
+  pointsAwarded Int        @default(0)
+  published     Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  organizers EventOrganizer[]
+  guests     EventGuest[]
+}
+
+model EventOrganizer {
+  eventId Int
+  userId  Int
+  event Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  @@id([eventId, userId])
+}
+
+model EventGuest {
+  eventId Int
+  userId  Int
+  event Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  @@id([eventId, userId])
 }

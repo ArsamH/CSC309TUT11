@@ -1,36 +1,318 @@
 #!/usr/bin/env node
-'use strict';
+"use strict";
 
 const port = (() => {
-    const args = process.argv;
+  const args = process.argv;
 
-    if (args.length !== 3) {
-        console.error("usage: node index.js port");
-        process.exit(1);
-    }
+  if (args.length !== 3) {
+    console.error("usage: node index.js port");
+    process.exit(1);
+  }
 
-    const num = parseInt(args[2], 10);
-    if (isNaN(num)) {
-        console.error("error: argument must be an integer.");
-        process.exit(1);
-    }
+  const num = parseInt(args[2], 10);
+  if (isNaN(num)) {
+    console.error("error: argument must be an integer.");
+    process.exit(1);
+  }
 
-    return num;
+  return num;
 })();
 
+require("dotenv").config();
 const express = require("express");
+const { expressjwt: jwt } = require("express-jwt");
+const jwtLib = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const { v4: uuidv4 } = require("uuid");
+const { PrismaClient } = require("@prisma/client");
+
+const prisma = new PrismaClient();
 const app = express();
 
 app.use(express.json());
 
-// ADD YOUR WORK HERE
-
-
-const server = app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+const jwtMiddleware = jwt({
+  secret: process.env.JWT_SECRET,
+  algorithms: ["HS256"],
+  credentialsRequired: false,
 });
 
-server.on('error', (err) => {
-    console.error(`cannot start server: ${err.message}`);
-    process.exit(1);
+app.use(jwtMiddleware);
+
+const roleCheckMiddleware = (minimumRole) => {
+  const roleLevels = { regular: 1, cashier: 2, manager: 3, superuser: 4 };
+
+  return async (req, res, next) => {
+    if (!req.auth || !req.auth.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: { role: true },
+      });
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const userLevel = roleLevels[user.role] || 0;
+      const requiredLevel = roleLevels[minimumRole] || 0;
+
+      if (userLevel < requiredLevel) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      req.user = user;
+      next();
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+};
+
+const validateUtorid = (utorid) => {
+  return typeof utorid === "string" && /^[a-zA-Z0-9]{7,8}$/.test(utorid);
+};
+
+const validateName = (name) => {
+  return typeof name === "string" && name.length >= 1 && name.length <= 50;
+};
+
+const validateEmail = (email) => {
+  return (
+    typeof email === "string" && /^[^\s@]+@(mail\.)?utoronto\.ca$/.test(email)
+  );
+};
+
+const validatePassword = (password) => {
+  if (
+    typeof password !== "string" ||
+    password.length < 8 ||
+    password.length > 20
+  ) {
+    return false;
+  }
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  return hasUppercase && hasLowercase && hasNumber && hasSpecial;
+};
+
+const resetRateLimiter = new Map();
+
+app.post("/auth/tokens", async (req, res) => {
+  try {
+    const { utorid, password, ...extraFields } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (!utorid || !password) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { utorid },
+    });
+
+    if (!user || !user.passwordHash) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const token = jwtLib.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res.json({
+      token,
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/auth/resets", async (req, res) => {
+  try {
+    const { utorid, ...extraFields } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (!utorid) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const clientIp = req.ip;
+    const lastRequest = resetRateLimiter.get(clientIp);
+    const now = Date.now();
+
+    if (lastRequest && now - lastRequest < 60000) {
+      return res.status(429).json({ error: "Too Many Requests" });
+    }
+
+    resetRateLimiter.set(clientIp, now);
+    for (const [ip, timestamp] of resetRateLimiter.entries()) {
+      if (now - timestamp > 60000) {
+        resetRateLimiter.delete(ip);
+      }
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { utorid },
+    });
+    const resetToken = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetToken,
+          expiresAt,
+        },
+      });
+    }
+
+    res.status(202).json({
+      expiresAt: expiresAt.toISOString(),
+      resetToken: user ? resetToken : uuidv4(),
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/auth/resets/:resetToken", async (req, res) => {
+  try {
+    const { resetToken } = req.params;
+    const { utorid, password, ...extraFields } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (!utorid || !password) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (!validatePassword(password)) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { resetToken },
+    });
+
+    if (!user || user.utorid !== utorid) {
+      return res.status(404).json({ error: "Not Found" });
+    }
+
+    if (user.expiresAt && new Date() > user.expiresAt) {
+      return res.status(410).json({ error: "Gone" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        resetToken: null,
+        expiresAt: null,
+        lastLogin: new Date(),
+      },
+    });
+
+    res.status(200).json({ message: "OK" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+app.post("/users", roleCheckMiddleware("cashier"), async (req, res) => {
+  try {
+    const { utorid, name, email, ...extraFields } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (!utorid || !name || !email) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    if (
+      !validateUtorid(utorid) ||
+      !validateName(name) ||
+      !validateEmail(email)
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { utorid },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ error: "Conflict" });
+    }
+    const existingEmail = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingEmail) {
+      return res.status(409).json({ error: "Conflict" });
+    }
+
+    const resetToken = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const user = await prisma.user.create({
+      data: {
+        utorid,
+        name,
+        email,
+        resetToken,
+        expiresAt,
+        verified: false,
+      },
+    });
+
+    res.status(201).json({
+      id: user.id,
+      utorid: user.utorid,
+      name: user.name,
+      email: user.email,
+      verified: user.verified,
+      expiresAt: user.expiresAt.toISOString(),
+      resetToken: user.resetToken,
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+server.on("error", (err) => {
+  console.error(`cannot start server: ${err.message}`);
+  process.exit(1);
 });
