@@ -159,24 +159,28 @@ app.post("/auth/resets", async (req, res) => {
       return res.status(400).json({ error: "Bad Request" });
     }
 
-    const clientIp = req.ip;
-    const lastRequest = resetRateLimiter.get(clientIp);
+    const user = await prisma.user.findUnique({
+      where: { utorid },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Not Found" });
+    }
+
+    const lastRequest = resetRateLimiter.get(utorid);
     const now = Date.now();
 
     if (lastRequest && now - lastRequest < 60000) {
       return res.status(429).json({ error: "Too Many Requests" });
     }
 
-    resetRateLimiter.set(clientIp, now);
-    for (const [ip, timestamp] of resetRateLimiter.entries()) {
+    resetRateLimiter.set(utorid, now);
+    for (const [id, timestamp] of resetRateLimiter.entries()) {
       if (now - timestamp > 60000) {
-        resetRateLimiter.delete(ip);
+        resetRateLimiter.delete(id);
       }
     }
 
-    const user = await prisma.user.findUnique({
-      where: { utorid },
-    });
     const resetToken = uuidv4();
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
@@ -193,7 +197,7 @@ app.post("/auth/resets", async (req, res) => {
 
     res.status(202).json({
       expiresAt: expiresAt.toISOString(),
-      resetToken: user ? resetToken : uuidv4(),
+      resetToken,
     });
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -225,7 +229,7 @@ app.post("/auth/resets/:resetToken", async (req, res) => {
       return res.status(404).json({ error: "Not Found" });
     }
 
-    if (user.expiresAt && new Date() > user.expiresAt) {
+    if (!user.expiresAt || new Date() > user.expiresAt) {
       return res.status(410).json({ error: "Gone" });
     }
 
