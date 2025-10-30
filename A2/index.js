@@ -355,12 +355,10 @@ app.get("/users", roleCheckMiddleware("manager"), async (req, res) => {
       filters.verified = verified === "true";
     }
 
-    if (activated !== undefined) {
-      if (activated === "true") {
-        filters.lastLogin = { not: null };
-      } else {
-        filters.lastLogin = null;
-      }
+    if (activated === "true") {
+      filters.lastLogin = { not: null };
+    } else if (activated === "false") {
+      filters.lastLogin = null;
     }
 
     const count = await prisma.user.count({ where: filters });
