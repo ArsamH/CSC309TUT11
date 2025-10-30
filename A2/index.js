@@ -492,19 +492,11 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (
-        verified !== undefined &&
-        verified !== null &&
-        typeof verified !== "boolean"
-      ) {
+      if (verified !== undefined && typeof verified !== "boolean") {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (
-        suspicious !== undefined &&
-        suspicious !== null &&
-        typeof suspicious !== "boolean"
-      ) {
+      if (suspicious !== undefined && typeof suspicious !== "boolean") {
         return res.status(400).json({ error: "Bad Request" });
       }
 
