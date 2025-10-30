@@ -475,9 +475,9 @@ app.patch(
 
       const { email, verified, suspicious, role, ...extraFields } = req.body;
 
-      // if (Object.keys(extraFields).length > 0) {
-      //   return res.status(400).json({ error: "Bad Request" });
-      // }
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
 
       if (
         email === undefined &&
@@ -527,9 +527,7 @@ app.patch(
       }
       if (role === "cashier") {
         const isSus =
-          suspicious !== undefined && suspicious !== null
-            ? suspicious
-            : existingUser.suspicious;
+          suspicious !== undefined ? suspicious : existingUser.suspicious;
         if (isSus) {
           return res.status(400).json({ error: "Bad Request" });
         }
@@ -542,19 +540,19 @@ app.patch(
       };
 
       const updateData = {};
-      if (email !== undefined && email !== null) {
+      if (email !== undefined) {
         updateData.email = email;
         response.email = email;
       }
-      if (verified !== undefined && verified !== null) {
+      if (verified !== undefined) {
         updateData.verified = verified;
         response.verified = verified;
       }
-      if (suspicious !== undefined && suspicious !== null) {
+      if (suspicious !== undefined) {
         updateData.suspicious = suspicious;
         response.suspicious = suspicious;
       }
-      if (role !== undefined && role !== null) {
+      if (role !== undefined) {
         updateData.role = role;
         response.role = role;
       }
