@@ -510,12 +510,7 @@ app.patch(
   async (req, res) => {
     try {
       const userId = req.auth.userId;
-      const { name, email, birthday, ...extraFields } = req.body;
-
-      console.log("bopdy:", req.body);
-      console.log("file:", req.file);
-      console.log("nam,e:", name, "email:", email, "birthday:", birthday);
-      console.log("extra fields:", extraFields);
+      const { name, email, birthday, avatar, ...extraFields } = req.body;
 
       if (Object.keys(extraFields).length > 0) {
         return res.status(400).json({ error: "Bad Request" });
