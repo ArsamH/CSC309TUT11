@@ -585,6 +585,51 @@ app.patch(
   }
 );
 
+app.patch(
+  "/users/me/password",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const { old, new: newPassword, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (!old || !newPassword) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (!validatePassword(newPassword)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { passwordHash: true },
+      });
+      if (!user || !user.passwordHash) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const passwordMatch = await bcrypt.compare(old, user.passwordHash);
+      if (!passwordMatch) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: newPasswordHash },
+      });
+
+      res.status(200).json({ message: "OK" });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
   try {
     const userId = parseInt(req.params.userId, 10);
