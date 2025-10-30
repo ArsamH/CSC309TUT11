@@ -39,6 +39,14 @@ const jwtMiddleware = jwt({
 
 app.use(jwtMiddleware);
 
+app.use((err, req, res, next) => {
+  if (err.name === "UnauthorizedError") {
+    req.auth = null;
+    return next();
+  }
+  next();
+});
+
 const roleCheckMiddleware = (minimumRole) => {
   const roleLevels = { regular: 1, cashier: 2, manager: 3, superuser: 4 };
 
@@ -357,10 +365,8 @@ app.get("/users", roleCheckMiddleware("manager"), async (req, res) => {
 
     if (activated === "true") {
       filters.lastLogin = { not: null };
-      console.log("activated is true");
     } else if (activated === "false") {
       filters.lastLogin = null;
-      console.log("activated is false");
     }
 
     const count = await prisma.user.count({ where: filters });
