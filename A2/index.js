@@ -316,6 +316,84 @@ app.post("/users", roleCheckMiddleware("cashier"), async (req, res) => {
   }
 });
 
+app.get("/users", roleCheckMiddleware("manager"), async (req, res) => {
+  try {
+    const {
+      name,
+      role,
+      verified,
+      activated,
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (
+      isNaN(pageNumber) ||
+      pageNumber < 1 ||
+      isNaN(limitNumber) ||
+      limitNumber < 1
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    const filters = {};
+
+    if (name) {
+      filters.OR = [
+        { utorid: { contains: name } },
+        { name: { contains: name } },
+      ];
+    }
+
+    if (role) {
+      filters.role = role;
+    }
+
+    if (verified !== undefined) {
+      filters.verified = verified === "true";
+    }
+
+    if (activated !== undefined) {
+      if (activated === "true") {
+        filters.lastLogin = { not: null };
+      } else {
+        filters.lastLogin = null;
+      }
+    }
+
+    const count = await prisma.user.count({ where: filters });
+
+    const skip = (pageNumber - 1) * limitNumber;
+    const results = await prisma.user.findMany({
+      where: filters,
+      select: {
+        id: true,
+        utorid: true,
+        name: true,
+        email: true,
+        birthday: true,
+        role: true,
+        points: true,
+        createdAt: true,
+        lastLogin: true,
+        verified: true,
+        avatarUrl: true,
+      },
+      skip,
+      take: limitNumber,
+    });
+
+    res.status(200).json({
+      count,
+      results,
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
