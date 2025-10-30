@@ -475,9 +475,9 @@ app.patch(
 
       const { email, verified, suspicious, role, ...extraFields } = req.body;
 
-      // if (Object.keys(extraFields).length > 0) {
-      //   return res.status(400).json({ error: "Bad Request" });
-      // }
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
 
       if (
         email === undefined &&
@@ -495,7 +495,7 @@ app.patch(
       if (
         verified !== undefined &&
         verified !== null &&
-        typeof verified !== "boolean"
+        (typeof verified !== "boolean" || verified !== true)
       ) {
         return res.status(400).json({ error: "Bad Request" });
       }
