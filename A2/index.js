@@ -400,11 +400,6 @@ app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
       return res.status(400).json({ error: "Bad Request" });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-
     const userSelect = {
       id: true,
       utorid: true,
@@ -413,7 +408,7 @@ app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
       verified: true,
     };
 
-    if (user.role === "manager" || user.role === "superuser") {
+    if (req.user.role === "manager" || req.user.role === "superuser") {
       userSelect.email = true;
       userSelect.birthday = true;
       userSelect.role = true;
@@ -422,12 +417,12 @@ app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
       userSelect.avatarUrl = true;
     }
 
-    const finalUser = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: userId },
       select: userSelect,
     });
 
-    if (!finalUser) {
+    if (!user) {
       return res.status(404).json({ error: "Not Found" });
     }
 
@@ -459,13 +454,118 @@ app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
     });
 
     res.status(200).json({
-      ...finalUser,
+      ...user,
       promotions,
     });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+app.patch(
+  "/users/:userId",
+  roleCheckMiddleware("manager"),
+  async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const { email, verified, suspicious, role, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (
+        email === undefined &&
+        verified === undefined &&
+        suspicious === undefined &&
+        role === undefined
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (email !== undefined && !validateEmail(email)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (verified !== undefined && typeof verified !== "boolean") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (suspicious !== undefined && typeof suspicious !== "boolean") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (
+        role !== undefined &&
+        role !== "regular" &&
+        role !== "cashier" &&
+        role !== "manager" &&
+        role !== "superuser"
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (req.user.role === "manager") {
+        if (role !== "regular" && role !== "cashier") {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+      }
+
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, utorid: true, name: true, suspicious: true },
+      });
+
+      if (!existingUser) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+      if (role === "cashier") {
+        const isSus =
+          suspicious !== undefined ? suspicious : existingUser.suspicious;
+        if (isSus) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+      }
+
+      const response = {
+        id: existingUser.id,
+        utorid: existingUser.utorid,
+        name: existingUser.name,
+      };
+
+      const updateData = {};
+      if (email !== undefined) {
+        updateData.email = email;
+        response.email = email;
+      }
+      if (verified !== undefined) {
+        updateData.verified = verified;
+        response.verified = verified;
+      }
+      if (suspicious !== undefined) {
+        updateData.suspicious = suspicious;
+        response.suspicious = suspicious;
+      }
+      if (role !== undefined) {
+        updateData.role = role;
+        response.role = role;
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+      res.status(200).json(response);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
