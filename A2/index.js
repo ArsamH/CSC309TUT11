@@ -854,8 +854,8 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
     }
     if (type === "purchase") {
       if (
-        currentUser.role !== "cashier" ||
-        currentUser.role !== "manager" ||
+        currentUser.role !== "cashier" &&
+        currentUser.role !== "manager" &&
         currentUser.role !== "superuser"
       ) {
         return res.status(403).json({ error: "Forbidden" });
@@ -964,7 +964,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
     }
 
     if (type === "adjustment") {
-      if (currentUser.role !== "manager" || currentUser.role !== "superuser") {
+      if (currentUser.role !== "manager" && currentUser.role !== "superuser") {
         return res.status(403).json({ error: "Forbidden" });
       }
       if (amount === undefined || amount === null) {
@@ -1016,6 +1016,162 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
       });
     }
     return res.status(400).json({ error: "Bad Request" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/transactions", roleCheckMiddleware("manager"), async (req, res) => {
+  try {
+    const {
+      name,
+      createdBy,
+      suspicious,
+      promotionId,
+      type,
+      relatedId,
+      amount,
+      operator,
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (
+      isNaN(pageNumber) ||
+      pageNumber < 1 ||
+      isNaN(limitNumber) ||
+      limitNumber < 1
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    if (relatedId !== undefined && type === undefined) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (
+      (amount !== undefined && operator === undefined) ||
+      (amount === undefined && operator !== undefined)
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    if (operator !== undefined && operator !== "gte" && operator !== "lte") {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const filters = {};
+
+    if (name) {
+      filters.user = {
+        OR: [{ utorid: name }, { name: name }],
+      };
+    }
+
+    if (createdBy) {
+      filters.createdBy = {
+        utorid: createdBy,
+      };
+    }
+
+    if (suspicious !== undefined) {
+      filters.suspicious = suspicious === "true";
+    }
+    if (type) {
+      filters.type = type;
+    }
+
+    if (relatedId !== undefined) {
+      const relatedIdNum = parseInt(relatedId, 10);
+      if (isNaN(relatedIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      filters.relatedId = relatedIdNum;
+    }
+    if (amount !== undefined) {
+      const amountNum = parseInt(amount, 10);
+      if (isNaN(amountNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (operator === "gte") {
+        filters.amount = { gte: amountNum };
+      } else if (operator === "lte") {
+        filters.amount = { lte: amountNum };
+      }
+    }
+
+    let possibleTransactionIds = null;
+    if (promotionId !== undefined) {
+      const promotionIdNum = parseInt(promotionId, 10);
+      if (isNaN(promotionIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const transactionPromotions = await prisma.transactionPromotion.findMany({
+        where: { promotionId: promotionIdNum },
+        select: { transactionId: true },
+      });
+
+      possibleTransactionIds = transactionPromotions.map(
+        (tp) => tp.transactionId
+      );
+
+      if (possibleTransactionIds.length === 0) {
+        return res.status(200).json({ count: 0, results: [] });
+      }
+
+      filters.id = { in: possibleTransactionIds };
+    }
+
+    const count = await prisma.transaction.count({ where: filters });
+
+    const skip = (pageNumber - 1) * limitNumber;
+    const transactions = await prisma.transaction.findMany({
+      where: filters,
+      include: {
+        user: {
+          select: { utorid: true },
+        },
+        createdBy: {
+          select: { utorid: true },
+        },
+        promotions: {
+          select: { promotionId: true },
+        },
+      },
+      skip,
+      take: limitNumber,
+    });
+    const results = transactions.map((t) => {
+      const result = {
+        id: t.id,
+        utorid: t.user.utorid,
+        amount: t.amount,
+        type: t.type,
+        promotionIds: t.promotions.map((p) => p.promotionId),
+        suspicious: t.suspicious,
+        remark: t.remark || "",
+        createdBy: t.createdBy.utorid,
+      };
+
+      if (t.spent !== null) {
+        result.spent = t.spent;
+      }
+      if (t.relatedId !== null) {
+        result.relatedId = t.relatedId;
+      }
+      if (t.redeemed !== null) {
+        result.redeemed = t.redeemed;
+      }
+
+      return result;
+    });
+
+    res.status(200).json({
+      count,
+      results,
+    });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
