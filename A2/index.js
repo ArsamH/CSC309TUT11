@@ -292,7 +292,6 @@ app.post("/auth/resets/:resetToken", async (req, res) => {
         passwordHash,
         resetToken: null,
         expiresAt: null,
-        lastLogin: new Date(),
         activated: true,
       },
     });
