@@ -1835,6 +1835,289 @@ app.get("/events", roleCheckMiddleware("regular"), async (req, res) => {
   }
 });
 
+app.get(
+  "/events/:eventId",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const eventIdNum = parseInt(eventId, 10);
+
+      if (isNaN(eventIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const event = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+        include: {
+          organizers: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  utorid: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          guests: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  utorid: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: { id: true, role: true },
+      });
+
+      if (!currentUser) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const isOrganizer = event.organizers.some(
+        (organizer) => organizer.userId === currentUser.id
+      );
+      if (
+        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
+        !isOrganizer &&
+        !event.published
+      ) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+      const organizers = event.organizers.map((organizer) => ({
+        id: organizer.user.id,
+        utorid: organizer.user.utorid,
+        name: organizer.user.name,
+      }));
+      if (
+        currentUser.role === "manager" ||
+        currentUser.role === "superuser" ||
+        isOrganizer
+      ) {
+        const guests = event.guests.map((guest) => ({
+          id: guest.user.id,
+          utorid: guest.user.utorid,
+          name: guest.user.name,
+          points: guest.points,
+        }));
+
+        res.status(200).json({
+          id: event.id,
+          name: event.name,
+          description: event.description,
+          location: event.location,
+          startTime: event.startTime.toISOString(),
+          endTime: event.endTime.toISOString(),
+          capacity: event.capacity,
+          pointsRemain: event.points - event.pointsAwarded,
+          pointsAwarded: event.pointsAwarded,
+          published: event.published,
+          organizers,
+          guests,
+        });
+      } else {
+        res.status(200).json({
+          id: event.id,
+          name: event.name,
+          description: event.description,
+          location: event.location,
+          startTime: event.startTime.toISOString(),
+          endTime: event.endTime.toISOString(),
+          capacity: event.capacity,
+          organizers,
+          numGuests: event.guests.length,
+        });
+      }
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.patch(
+  "/events/:eventId",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const {
+        name,
+        description,
+        location,
+        startTime,
+        endTime,
+        capacity,
+        points,
+        published,
+        ...extraFields
+      } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const eventIdNum = parseInt(eventId, 10);
+      if (isNaN(eventIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (
+        name === undefined &&
+        description === undefined &&
+        location === undefined &&
+        startTime === undefined &&
+        endTime === undefined &&
+        capacity === undefined &&
+        points === undefined &&
+        published === undefined
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+        include: {
+          organizers: true,
+          guests: true,
+        },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: { id: true, role: true },
+      });
+
+      if (!currentUser) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const isOrganizer = event.organizers.some(
+        (organizer) => organizer.userId === currentUser.id
+      );
+
+      if (
+        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
+        !isOrganizer
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (
+        (points !== undefined || published !== undefined) &&
+        !(currentUser.role === "manager" || currentUser.role === "superuser")
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const now = new Date();
+      const updateData = {};
+      const response = {
+        id: event.id,
+        name: event.name,
+        location: event.location,
+      };
+
+      if (name !== undefined) {
+        if (event.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.name = name;
+        response.name = name;
+      }
+      if (description !== undefined) {
+        updateData.description = description;
+        response.description = description;
+      }
+      if (location !== undefined) {
+        if (event.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.location = location;
+        response.location = location;
+      }
+      if (startTime !== undefined) {
+        const newStartTime = new Date(startTime);
+        if (
+          isNaN(newStartTime.getTime()) ||
+          newStartTime < now ||
+          event.startTime < now
+        ) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.startTime = newStartTime;
+        response.startTime = newStartTime.toISOString();
+      }
+
+      if (endTime !== undefined) {
+        const newEndTime = new Date(endTime);
+        if (
+          isNaN(newEndTime.getTime()) ||
+          newEndTime < now ||
+          event.endTime < now
+        ) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        const actualStartTime = updateData.startTime || event.startTime;
+        if (newEndTime <= actualStartTime) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.endTime = newEndTime;
+        response.endTime = newEndTime.toISOString();
+      }
+      if (capacity !== undefined) {
+        if (event.startTime < now || capacity < event.guests.length) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.capacity = capacity;
+        response.capacity = capacity;
+      }
+      if (
+        points !== undefined &&
+        (currentUser.role === "manager" || currentUser.role === "superuser")
+      ) {
+        if (points < event.pointsAwarded) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.points = points;
+        response.points = points;
+      }
+      if (
+        published !== undefined &&
+        (currentUser.role === "manager" || currentUser.role === "superuser")
+      ) {
+        if (published !== true) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.published = published;
+        response.published = published;
+      }
+
+      await prisma.event.update({
+        where: { id: eventIdNum },
+        data: updateData,
+      });
+
+      res.status(200).json(response);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
   try {
     const {
