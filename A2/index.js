@@ -1177,6 +1177,149 @@ app.get("/transactions", roleCheckMiddleware("manager"), async (req, res) => {
   }
 });
 
+app.get(
+  "/transactions/:transactionId",
+  roleCheckMiddleware("manager"),
+  async (req, res) => {
+    try {
+      const { transactionId } = req.params;
+      const transId = parseInt(transactionId, 10);
+      if (isNaN(transId)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const transaction = await prisma.transaction.findUnique({
+        where: { id: transId },
+        include: {
+          user: {
+            select: { utorid: true },
+          },
+          createdBy: {
+            select: { utorid: true },
+          },
+          promotions: {
+            select: { promotionId: true },
+          },
+        },
+      });
+
+      if (!transaction) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+      const result = {
+        id: updatedTransaction.id,
+        utorid: updatedTransaction.user.utorid,
+        type: updatedTransaction.type,
+        amount: updatedTransaction.amount,
+        promotionIds: updatedTransaction.promotions.map((p) => p.promotionId),
+        suspicious: updatedTransaction.suspicious,
+        remark: updatedTransaction.remark || "",
+        createdBy: updatedTransaction.createdBy.utorid,
+      };
+      if (updatedTransaction.spent !== null) {
+        result.spent = updatedTransaction.spent;
+      }
+      res.status(200).json(result);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.patch(
+  "/transactions/:transactionId/suspicious",
+  roleCheckMiddleware("manager"),
+  async (req, res) => {
+    try {
+      const { transactionId } = req.params;
+      const { suspicious, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const transId = parseInt(transactionId, 10);
+      if (isNaN(transId)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (typeof suspicious !== "boolean" || suspicious === undefined) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const transaction = await prisma.transaction.findUnique({
+        where: { id: transId },
+        include: {
+          user: {
+            select: { utorid: true, points: true },
+          },
+          createdBy: {
+            select: { utorid: true },
+          },
+          promotions: {
+            select: { promotionId: true },
+          },
+        },
+      });
+
+      if (!transaction) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+      if (transaction.suspicious !== suspicious) {
+        let pointsAdded = 0;
+
+        if (suspicious) {
+          pointsAdded -= transaction.amount;
+        } else {
+          pointsAdded += transaction.amount;
+        }
+
+        await prisma.transaction.update({
+          where: { id: transId },
+          data: { suspicious },
+        });
+
+        await prisma.user.update({
+          where: { id: transaction.userId },
+          data: {
+            points: {
+              increment: pointsAdded,
+            },
+          },
+        });
+      }
+      const updatedTransaction = await prisma.transaction.findUnique({
+        where: { id: transId },
+        include: {
+          user: {
+            select: { utorid: true },
+          },
+          createdBy: {
+            select: { utorid: true },
+          },
+          promotions: {
+            select: { promotionId: true },
+          },
+        },
+      });
+
+      const result = {
+        id: updatedTransaction.id,
+        utorid: updatedTransaction.user.utorid,
+        type: updatedTransaction.type,
+        amount: updatedTransaction.amount,
+        promotionIds: updatedTransaction.promotions.map((p) => p.promotionId),
+        suspicious: updatedTransaction.suspicious,
+        remark: updatedTransaction.remark || "",
+        createdBy: updatedTransaction.createdBy.utorid,
+      };
+      if (updatedTransaction.spent !== null) {
+        result.spent = updatedTransaction.spent;
+      }
+
+      res.status(200).json(result);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
