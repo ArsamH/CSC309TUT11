@@ -1059,9 +1059,6 @@ app.post(
       if (!sender.verified) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      if (sender.id === recipient.id) {
-        return res.status(400).json({ error: "Bad Request" });
-      }
 
       const recipient = await prisma.user.findUnique({
         where: { id: recipientId },
@@ -1074,6 +1071,10 @@ app.post(
 
       if (!recipient) {
         return res.status(404).json({ error: "Not Found" });
+      }
+
+      if (sender.id === recipient.id) {
+        return res.status(400).json({ error: "Bad Request" });
       }
 
       if (sender.points < amount) {
@@ -1267,7 +1268,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
         utorid: utorid,
         type: "purchase",
         spent: spent,
-        earned: earned,
+        earned: currentUser.suspicious ? 0 : earned,
         remark: transaction.remark,
         promotionIds: promotionIds || [],
         createdBy: currentUser.utorid,
@@ -2089,7 +2090,11 @@ app.patch(
         points !== undefined &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
-        if (points < event.pointsAwarded) {
+        if (
+          !Number.isInteger(points) ||
+          points <= 0 ||
+          points < event.pointsAwarded
+        ) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.points = points;
