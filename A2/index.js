@@ -630,6 +630,208 @@ app.patch(
   }
 );
 
+app.post(
+  "/users/me/transactions",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { type, amount, remark, ...extraFields } = req.body;
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (type !== "redemption") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (amount === undefined || !Number.isInteger(amount) || amount <= 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: {
+          id: true,
+          utorid: true,
+          points: true,
+          verified: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      if (!user.verified) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      if (user.points < amount) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const transaction = await prisma.transaction.create({
+        data: {
+          type: "redemption",
+          amount: amount,
+          redeemed: null,
+          remark: remark || "",
+          suspicious: false,
+          userId: user.id,
+          createdById: user.id,
+        },
+      });
+
+      res.status(201).json({
+        id: transaction.id,
+        utorid: user.utorid,
+        type: "redemption",
+        processedBy: null,
+        amount: transaction.amount,
+        remark: transaction.remark,
+        createdBy: user.utorid,
+      });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+app.get(
+  "/users/me/transactions",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const {
+        type,
+        relatedId,
+        promotionId,
+        amount,
+        operator,
+        page = "1",
+        limit = "10",
+      } = req.query;
+
+      const pageNumber = parseInt(page, 10);
+      const limitNumber = parseInt(limit, 10);
+
+      if (
+        isNaN(pageNumber) ||
+        pageNumber < 1 ||
+        isNaN(limitNumber) ||
+        limitNumber < 1
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (relatedId !== undefined && type === undefined) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (
+        (amount !== undefined && operator === undefined) ||
+        (amount === undefined && operator !== undefined)
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (operator !== undefined && operator !== "gte" && operator !== "lte") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const filters = {
+        userId: req.auth.userId,
+      };
+
+      if (type) {
+        filters.type = type;
+      }
+
+      if (relatedId !== undefined) {
+        const relatedIdNum = parseInt(relatedId, 10);
+        if (isNaN(relatedIdNum)) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        filters.relatedId = relatedIdNum;
+      }
+      if (amount !== undefined) {
+        const amountNum = parseInt(amount, 10);
+        if (isNaN(amountNum)) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (operator === "gte") {
+          filters.amount = { gte: amountNum };
+        } else if (operator === "lte") {
+          filters.amount = { lte: amountNum };
+        }
+      }
+
+      let possibleTransactionIds = null;
+      if (promotionId !== undefined) {
+        const promotionIdNum = parseInt(promotionId, 10);
+        if (isNaN(promotionIdNum)) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+
+        const transactionPromotions =
+          await prisma.transactionPromotion.findMany({
+            where: { promotionId: promotionIdNum },
+            select: { transactionId: true },
+          });
+
+        possibleTransactionIds = transactionPromotions.map(
+          (tp) => tp.transactionId
+        );
+
+        if (possibleTransactionIds.length === 0) {
+          return res.status(200).json({ count: 0, results: [] });
+        }
+
+        filters.id = { in: possibleTransactionIds };
+      }
+
+      const count = await prisma.transaction.count({ where: filters });
+
+      const skip = (pageNumber - 1) * limitNumber;
+      const transactions = await prisma.transaction.findMany({
+        where: filters,
+        include: {
+          createdBy: {
+            select: { utorid: true },
+          },
+          promotions: {
+            select: { promotionId: true },
+          },
+        },
+        skip,
+        take: limitNumber,
+      });
+
+      const results = transactions.map((t) => {
+        const result = {
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          promotionIds: t.promotions.map((p) => p.promotionId),
+          remark: t.remark || "",
+          createdBy: t.createdBy.utorid,
+        };
+
+        if (t.spent !== null) {
+          result.spent = t.spent;
+        }
+        if (t.relatedId !== null) {
+          result.relatedId = t.relatedId;
+        }
+
+        return result;
+      });
+
+      res.status(200).json({
+        count,
+        results,
+      });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 app.get("/users/:userId", roleCheckMiddleware("cashier"), async (req, res) => {
   try {
     const userId = parseInt(req.params.userId, 10);
@@ -1418,6 +1620,82 @@ app.patch(
       }
 
       res.status(200).json(result);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.patch(
+  "/transactions/:transactionId/processed",
+  roleCheckMiddleware("cashier"),
+  async (req, res) => {
+    try {
+      const { transactionId } = req.params;
+      const { processed, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const transId = parseInt(transactionId, 10);
+      if (isNaN(transId)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (processed !== true) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const transaction = await prisma.transaction.findUnique({
+        where: { id: transId },
+        include: {
+          user: {
+            select: { id: true, utorid: true, points: true },
+          },
+          createdBy: {
+            select: { utorid: true },
+          },
+        },
+      });
+
+      if (!transaction) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      if (transaction.type !== "redemption" || transaction.relatedId !== null) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const redeemer = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: { utorid: true },
+      });
+
+      if (!redeemer) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      await prisma.transaction.update({
+        where: { id: transId },
+        data: { redeemed: transaction.amount, relatedId: req.auth.userId },
+      });
+      await prisma.user.update({
+        where: { id: transaction.user.id },
+        data: {
+          points: {
+            increment: -transaction.amount,
+          },
+        },
+      });
+
+      res.status(200).json({
+        id: transaction.id,
+        utorid: transaction.user.utorid,
+        type: "redemption",
+        processedBy: redeemer.utorid,
+        redeemed: transaction.amount,
+        remark: transaction.remark || "",
+        createdBy: transaction.createdBy.utorid,
+      });
     } catch {
       res.status(500).json({ error: "Internal server error" });
     }
