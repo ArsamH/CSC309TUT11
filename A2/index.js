@@ -1075,6 +1075,10 @@ app.post(
         return res.status(404).json({ error: "Not Found" });
       }
 
+      if (sender.id === recipient.id) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
       const senderTransaction = await prisma.transaction.create({
         data: {
           type: "transfer",
@@ -1280,7 +1284,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
         return res.status(400).json({ error: "Bad Request" });
       }
       if (relatedId === undefined || relatedId === null) {
-        return res.status(400).json({ error: "Bad Request" });
+        return res.status(404).json({ error: "Not Found" });
       }
 
       if (typeof relatedId !== "number") {
@@ -1512,17 +1516,17 @@ app.get(
         return res.status(404).json({ error: "Not Found" });
       }
       const result = {
-        id: updatedTransaction.id,
-        utorid: updatedTransaction.user.utorid,
-        type: updatedTransaction.type,
-        amount: updatedTransaction.amount,
-        promotionIds: updatedTransaction.promotions.map((p) => p.promotionId),
-        suspicious: updatedTransaction.suspicious,
-        remark: updatedTransaction.remark || "",
-        createdBy: updatedTransaction.createdBy.utorid,
+        id: transaction.id,
+        utorid: transaction.user.utorid,
+        type: transaction.type,
+        amount: transaction.amount,
+        promotionIds: transaction.promotions.map((p) => p.promotionId),
+        suspicious: transaction.suspicious,
+        remark: transaction.remark || "",
+        createdBy: transaction.createdBy.utorid,
       };
-      if (updatedTransaction.spent !== null) {
-        result.spent = updatedTransaction.spent;
+      if (transaction.spent !== null) {
+        result.spent = transaction.spent;
       }
       res.status(200).json(result);
     } catch {
@@ -1661,7 +1665,11 @@ app.patch(
         return res.status(404).json({ error: "Not Found" });
       }
 
-      if (transaction.type !== "redemption" || transaction.relatedId !== null) {
+      if (transaction.type !== "redemption" || transaction.redeemed !== null) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (transaction.user.points < transaction.amount) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
