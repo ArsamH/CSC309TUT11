@@ -5,4 +5,6 @@
 - used AI to implement multer middleware
 (link to transcript: https://claude.ai/share/dcfa3736-21c1-4db3-a364-a0ab3164872c)
 
-- 
+- used AI to learn in memory pagination 
+ie.     const skip = (pageNumber - 1) * limitNumber;
+        const paginatedEvents = filteredEvents.slice(skip, skip + limitNumber); (this works just as well as skip, take)

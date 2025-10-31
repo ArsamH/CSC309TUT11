@@ -1719,6 +1719,122 @@ app.patch(
   }
 );
 
+app.get("/events", roleCheckMiddleware("regular"), async (req, res) => {
+  try {
+    const {
+      name,
+      location,
+      started,
+      ended,
+      showFull,
+      published,
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (
+      isNaN(pageNumber) ||
+      pageNumber < 1 ||
+      isNaN(limitNumber) ||
+      limitNumber < 1
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (started !== undefined && ended !== undefined) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.auth.userId },
+      select: { role: true },
+    });
+
+    if (!currentUser) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const filters = {};
+    const now = new Date();
+    if (!(currentUser.role === "manager" || currentUser.role === "superuser")) {
+      filters.published = true;
+    } else {
+      if (published !== undefined) {
+        filters.published = published === "true";
+      }
+    }
+    if (name) {
+      filters.name = name;
+    }
+    if (location) {
+      filters.location = location;
+    }
+
+    if (started !== undefined) {
+      if (started === "true") {
+        filters.startTime = { lte: now };
+      } else {
+        filters.startTime = { gt: now };
+      }
+    }
+    if (ended !== undefined) {
+      if (ended === "true") {
+        filters.endTime = { lte: now };
+      } else {
+        filters.endTime = { gt: now };
+      }
+    }
+    const events = await prisma.event.findMany({
+      where: filters,
+      include: {
+        guests: true,
+      },
+    });
+    const shouldShowFull = showFull === "true";
+    let filteredEvents = events;
+
+    if (!shouldShowFull) {
+      filteredEvents = events.filter((event) => {
+        if (event.capacity === null) {
+          return true;
+        }
+        return event.guests.length < event.capacity;
+      });
+    }
+
+    const count = filteredEvents.length;
+    const skip = (pageNumber - 1) * limitNumber;
+    const paginatedEvents = filteredEvents.slice(skip, skip + limitNumber);
+    const results = paginatedEvents.map((event) => {
+      const result = {
+        id: event.id,
+        name: event.name,
+        location: event.location,
+        startTime: event.startTime.toISOString(),
+        endTime: event.endTime.toISOString(),
+        capacity: event.capacity,
+        numGuests: event.guests.length,
+      };
+      if (currentUser.role === "manager" || currentUser.role === "superuser") {
+        result.pointsRemain = event.points - event.pointsAwarded;
+        result.pointsAwarded = event.pointsAwarded;
+        result.published = event.published;
+      }
+
+      return result;
+    });
+
+    res.status(200).json({
+      count,
+      results,
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
   try {
     const {
@@ -1749,6 +1865,11 @@ app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
     }
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
     const now = new Date();
     if (startDate < now || endDate < now || endDate <= startDate) {
       return res.status(400).json({ error: "Bad Request" });
