@@ -44,6 +44,8 @@ model User {
   resetToken    String?       @unique
   avatarUrl     String?
   usedPromotions  UserPromotion[]
+  transactions  Transaction[] @relation("UserTransactions")
+  createdTransactions Transaction[] @relation("CreatedByUser")
 }
 
 model Transaction {
@@ -56,6 +58,11 @@ model Transaction {
   remark        String?
   suspicious    Boolean          @default(false)
   createdAt     DateTime         @default(now())
+  userId        Int
+  createdById   Int
+  user          User             @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy     User             @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: Cascade)
+  promotions    TransactionPromotion[]
 }
 
 model Promotion {
@@ -71,6 +78,7 @@ model Promotion {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   usedBy       UserPromotion[]
+  transactions TransactionPromotion[]
 }
 
 model UserPromotion {
@@ -82,4 +90,14 @@ model UserPromotion {
   promotion    Promotion  @relation(fields: [promotionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, promotionId])
+}
+
+model TransactionPromotion {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  promotionId   Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  promotion     Promotion   @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, promotionId])
 }

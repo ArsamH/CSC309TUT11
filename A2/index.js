@@ -816,6 +816,211 @@ app.patch(
   }
 );
 
+app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
+  try {
+    const {
+      utorid,
+      type,
+      spent,
+      amount,
+      relatedId,
+      promotionIds,
+      remark,
+      ...extraFields
+    } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (!utorid || !type) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    const customer = await prisma.user.findUnique({
+      where: { utorid },
+    });
+
+    if (!customer) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.auth.userId },
+      select: { utorid: true, role: true, suspicious: true },
+    });
+
+    if (!currentUser) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (type === "purchase") {
+      if (
+        currentUser.role !== "cashier" ||
+        currentUser.role !== "manager" ||
+        currentUser.role !== "superuser"
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (
+        spent === undefined ||
+        spent === null ||
+        typeof spent !== "number" ||
+        spent <= 0
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      let promotions = [];
+      if (promotionIds) {
+        const now = new Date();
+        promotions = await prisma.promotion.findMany({
+          where: {
+            id: { in: promotionIds },
+            startTime: { lte: now },
+            endTime: { gte: now },
+          },
+        });
+
+        if (promotions.length !== promotionIds.length) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+
+        for (const promotion of promotions) {
+          if (promotion.minSpending && spent < promotion.minSpending) {
+            return res.status(400).json({ error: "Bad Request" });
+          }
+          if (promotion.type === "onetime") {
+            const alreadyUsed = await prisma.userPromotion.findUnique({
+              where: {
+                userId_promotionId: {
+                  userId: customer.id,
+                  promotionId: promotion.id,
+                },
+              },
+            });
+
+            if (alreadyUsed) {
+              return res.status(400).json({ error: "Bad Request" });
+            }
+          }
+        }
+      }
+      let earned = Math.round(spent / 0.25);
+      for (const promotion of promotions) {
+        if (promotion.rate) {
+          earned += Math.round((spent / 0.25) * promotion.rate);
+        }
+        if (promotion.points) {
+          earned += promotion.points;
+        }
+      }
+      const transaction = await prisma.transaction.create({
+        data: {
+          type: "purchase",
+          amount: earned,
+          spent: spent,
+          remark: remark || "",
+          suspicious: currentUser.suspicious,
+          userId: customer.id,
+          createdById: req.auth.userId,
+        },
+      });
+      if (promotionIds && promotionIds.length > 0) {
+        for (const promotionId of promotionIds) {
+          await prisma.transactionPromotion.create({
+            data: {
+              transactionId: transaction.id,
+              promotionId: promotionId,
+            },
+          });
+          const promo = promotions.find((promo) => promo.id === promoId);
+          if (promo && promo.type === "onetime") {
+            await prisma.userPromotion.create({
+              data: {
+                userId: customer.id,
+                promotionId: promoId,
+              },
+            });
+          }
+        }
+      }
+      if (!currentUser.suspicious) {
+        await prisma.user.update({
+          where: { id: customer.id },
+          data: { points: customer.points + earned },
+        });
+      }
+
+      return res.status(201).json({
+        id: transaction.id,
+        utorid: utorid,
+        type: "purchase",
+        spent: spent,
+        earned: earned,
+        remark: transaction.remark,
+        promotionIds: promotionIds || [],
+        createdBy: currentUser.utorid,
+      });
+    }
+
+    if (type === "adjustment") {
+      if (currentUser.role !== "manager" || currentUser.role !== "superuser") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      if (amount === undefined || amount === null) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (typeof amount !== "number") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (relatedId === undefined || relatedId === null) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (typeof relatedId !== "number") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const relatedTransaction = await prisma.transaction.findUnique({
+        where: { id: relatedId },
+      });
+
+      if (!relatedTransaction) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const transaction = await prisma.transaction.create({
+        data: {
+          type: "adjustment",
+          amount: amount,
+          relatedId: relatedId,
+          remark: remark || "",
+          suspicious: false,
+          userId: customer.id,
+          createdById: req.auth.userId,
+        },
+      });
+      await prisma.user.update({
+        where: { id: customer.id },
+        data: { points: customer.points + amount },
+      });
+
+      return res.status(201).json({
+        id: transaction.id,
+        utorid: utorid,
+        amount: amount,
+        type: "adjustment",
+        relatedId: relatedId,
+        remark: transaction.remark,
+        promotionIds: promotionIds || [],
+        createdBy: currentUser.utorid,
+      });
+    }
+    return res.status(400).json({ error: "Bad Request" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
