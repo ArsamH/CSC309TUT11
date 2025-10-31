@@ -37,10 +37,12 @@ model User {
   points        Int           @default(0)
   verified      Boolean       @default(false)
   suspicious    Boolean       @default(false)
+  activated     Boolean       @default(false)
   passwordHash  String?
   createdAt     DateTime      @default(now())
   lastLogin     DateTime?
   expiresAt     DateTime?
+  
   resetToken    String?       @unique
   avatarUrl     String?
   usedPromotions  UserPromotion[]
