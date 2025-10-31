@@ -2768,6 +2768,214 @@ app.post(
   }
 );
 
+app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      type,
+      startTime,
+      endTime,
+      minSpending,
+      rate,
+      points,
+      ...extraFields
+    } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    if (type !== "automatic" && type !== "onetime") {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    const now = new Date();
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (startDate < now) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    if (endDate <= startDate) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const promotionDataBuilder = {
+      name,
+      description,
+      type,
+      startTime: startDate,
+      endTime: endDate,
+    };
+
+    if (minSpending !== undefined) {
+      if (isNaN(minSpending) || minSpending <= 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      promotionDataBuilder.minSpending = minSpending;
+    }
+
+    if (rate !== undefined) {
+      if (isNaN(rate) || rate <= 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      promotionDataBuilder.rate = rate;
+    }
+
+    if (points !== undefined) {
+      if (isNaN(points) || points <= 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      promotionDataBuilder.points = points;
+    }
+
+    const promotion = await prisma.promotion.create({
+      data: promotionDataBuilder,
+    });
+
+    const response = {
+      id: promotion.id,
+      name: promotion.name,
+      description: promotion.description,
+      type: promotion.type,
+      startTime: promotion.startTime.toISOString(),
+      endTime: promotion.endTime.toISOString(),
+      minSpending: promotion.minSpending,
+      rate: promotion.rate,
+      points: promotion.points,
+    };
+
+    res.status(201).json(response);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/promotions", roleCheckMiddleware("regular"), async (req, res) => {
+  try {
+    const { name, type, started, ended, page = "1", limit = "10" } = req.query;
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    if (
+      isNaN(pageNumber) ||
+      pageNumber < 1 ||
+      isNaN(limitNumber) ||
+      limitNumber < 1
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    if (started !== undefined && ended !== undefined) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.auth.userId },
+      select: { id: true, role: true },
+    });
+
+    if (!currentUser) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const filters = {};
+    const now = new Date();
+
+    if (name) {
+      filters.name = name;
+    }
+    if (type) {
+      if (type !== "automatic" && type !== "onetime") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      filters.type = type;
+    }
+
+    if (currentUser.role === "manager" || currentUser.role === "superuser") {
+      if (started !== undefined) {
+        if (started === "true") {
+          filters.startTime = { lte: now };
+        } else {
+          filters.startTime = { gt: now };
+        }
+      }
+
+      if (ended !== undefined) {
+        if (ended === "true") {
+          filters.endTime = { lte: now };
+        } else {
+          filters.endTime = { gt: now };
+        }
+      }
+    } else {
+      filters.startTime = { lte: now };
+      filters.endTime = { gt: now };
+    }
+    const allPromotions = await prisma.promotion.findMany({
+      where: filters,
+    });
+
+    let filteredPromotions = allPromotions;
+
+    if (!(currentUser.role === "manager" || currentUser.role === "superuser")) {
+      const usedPromotions = await prisma.userPromotion.findMany({
+        where: { userId: currentUser.id },
+        select: { promotionId: true },
+      });
+      const usedPromotionIds = usedPromotions.map(
+        (promotion) => promotion.promotionId
+      );
+      filteredPromotions = allPromotions.filter((promotion) => {
+        if (
+          promotion.type === "onetime" &&
+          usedPromotionIds.includes(promotion.id)
+        ) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    const count = filteredPromotions.length;
+
+    const skip = (pageNumber - 1) * limitNumber;
+    const paginatedPromotionValues = filteredPromotions.slice(
+      skip,
+      skip + limitNumber
+    );
+
+    const results = paginatedPromotionValues.map((promotion) => {
+      const promotionResponse = {
+        id: promotion.id,
+        name: promotion.name,
+        type: promotion.type,
+      };
+
+      if (currentUser.role === "manager" || currentUser.role === "superuser") {
+        promotionResponse.startTime = promotion.startTime.toISOString();
+      }
+
+      promotionResponse.endTime = promotion.endTime.toISOString();
+      promotionResponse.minSpending = promotion.minSpending;
+      promotionResponse.rate = promotion.rate;
+      promotionResponse.points = promotion.points;
+
+      return promotionResponse;
+    });
+
+    res.status(200).json({
+      count,
+      results,
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
