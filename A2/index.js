@@ -664,9 +664,6 @@ app.post(
       if (!user.verified) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      if (user.points < amount) {
-        return res.status(400).json({ error: "Bad Request" });
-      }
 
       const transaction = await prisma.transaction.create({
         data: {
