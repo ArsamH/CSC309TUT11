@@ -2410,6 +2410,364 @@ app.delete(
   }
 );
 
+app.post(
+  "/events/:eventId/guests",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const { utorid, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (!utorid) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const eventIdNum = parseInt(eventId, 10);
+      if (isNaN(eventIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const event = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+        include: {
+          organizers: true,
+          guests: true,
+        },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: { id: true, role: true },
+      });
+
+      if (!currentUser) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const isOrganizer = event.organizers.some(
+        (organizer) => organizer.userId === currentUser.id
+      );
+
+      if (
+        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
+        !isOrganizer
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      if (
+        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
+        !event.published
+      ) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const now = new Date();
+      if (event.endTime < now) {
+        return res.status(410).json({ error: "Gone" });
+      }
+      if (event.capacity !== null && event.guests.length >= event.capacity) {
+        return res.status(410).json({ error: "Gone" });
+      }
+
+      const guestPerson = await prisma.user.findUnique({
+        where: { utorid },
+      });
+
+      if (!guestPerson) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const isGuestOrganizer = event.organizers.some(
+        (organizer) => organizer.userId === guestUser.id
+      );
+
+      if (isGuestOrganizer) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const existingGuest = await prisma.eventGuest.findUnique({
+        where: {
+          userId_eventId: {
+            userId: guestPerson.id,
+            eventId: eventIdNum,
+          },
+        },
+      });
+
+      if (!existingGuest) {
+        await prisma.eventGuest.create({
+          data: {
+            userId: guestPerson.id,
+            eventId: eventIdNum,
+            points: 0,
+          },
+        });
+      }
+      const updatedEvent = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+        include: {
+          guests: true,
+        },
+      });
+
+      const response = {
+        id: updatedEvent.id,
+        name: updatedEvent.name,
+        location: updatedEvent.location,
+        guestAdded: {
+          id: guestPerson.id,
+          utorid: guestPerson.utorid,
+          name: guestPerson.name,
+        },
+        numGuests: updatedEvent.guests.length,
+      };
+
+      res.status(201).json(response);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.delete(
+  "/events/:eventId/guests/me",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const eventIdNum = parseInt(eventId, 10);
+      if (isNaN(eventIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const now = new Date();
+      if (event.endTime < now) {
+        return res.status(410).json({ error: "Gone" });
+      }
+      const guest = await prisma.eventGuest.findUnique({
+        where: {
+          userId_eventId: {
+            userId: req.auth.userId,
+            eventId: eventIdNum,
+          },
+        },
+      });
+
+      if (!guest) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      await prisma.eventGuest.delete({
+        where: {
+          userId_eventId: {
+            userId: req.auth.userId,
+            eventId: eventIdNum,
+          },
+        },
+      });
+
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.post(
+  "/events/:eventId/transactions",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const { type, utorid, amount, remark, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (type !== "event") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (amount === undefined || isNaN(amount) || amount <= 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const eventIdNum = parseInt(eventId, 10);
+      if (isNaN(eventIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+        include: {
+          organizers: true,
+          guests: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: { id: true, utorid: true, role: true },
+      });
+
+      if (!currentUser) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const isOrganizer = event.organizers.some(
+        (organizer) => organizer.userId === currentUser.id
+      );
+
+      if (
+        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
+        !isOrganizer
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (utorid !== undefined) {
+        const guest = event.guests.find(
+          (guest) => guest.user.utorid === utorid
+        );
+
+        if (!guest) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        const leftoverpoints = event.points - event.pointsAwarded;
+        if (leftoverpoints < amount) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+
+        const transaction = await prisma.transaction.create({
+          data: {
+            type: "event",
+            amount: amount,
+            relatedId: eventIdNum,
+            remark: remark || "",
+            suspicious: false,
+            userId: guest.userId,
+            createdById: currentUser.id,
+          },
+        });
+
+        await prisma.user.update({
+          where: { id: guest.userId },
+          data: { points: { increment: amount } },
+        });
+
+        await prisma.eventGuest.update({
+          where: {
+            userId_eventId: {
+              userId: guest.userId,
+              eventId: eventIdNum,
+            },
+          },
+          data: { points: { increment: amount } },
+        });
+
+        await prisma.event.update({
+          where: { id: eventIdNum },
+          data: { pointsAwarded: { increment: amount } },
+        });
+
+        const response = {
+          id: transaction.id,
+          recipient: guest.user.utorid,
+          awarded: amount,
+          type: "event",
+          relatedId: eventIdNum,
+          remark: transaction.remark,
+          createdBy: currentUser.utorid,
+        };
+
+        res.status(201).json(response);
+      } else {
+        if (event.guests.length === 0) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+
+        const finalAmount = amount * event.guests.length;
+        const leftoverpoints = event.points - event.pointsAwarded;
+        if (leftoverpoints < finalAmount) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+
+        const transactions = [];
+
+        for (const guest of event.guests) {
+          const transaction = await prisma.transaction.create({
+            data: {
+              type: "event",
+              amount: amount,
+              relatedId: eventIdNum,
+              remark: remark || "",
+              suspicious: false,
+              userId: guest.userId,
+              createdById: currentUser.id,
+            },
+          });
+
+          await prisma.user.update({
+            where: { id: guest.userId },
+            data: { points: { increment: amount } },
+          });
+
+          await prisma.eventGuest.update({
+            where: {
+              userId_eventId: {
+                userId: guest.userId,
+                eventId: eventIdNum,
+              },
+            },
+            data: { points: { increment: amount } },
+          });
+
+          const response = {
+            id: transaction.id,
+            recipient: guest.user.utorid,
+            awarded: amount,
+            type: "event",
+            relatedId: eventIdNum,
+            remark: transaction.remark,
+            createdBy: currentUser.utorid,
+          };
+
+          transactions.push(response);
+        }
+
+        await prisma.event.update({
+          where: { id: eventIdNum },
+          data: { pointsAwarded: { increment: totalAmount } },
+        });
+
+        res.status(201).json(transactions);
+      }
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
