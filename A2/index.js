@@ -293,6 +293,7 @@ app.post("/auth/resets/:resetToken", async (req, res) => {
         resetToken: null,
         expiresAt: null,
         lastLogin: new Date(),
+        activated: true,
       },
     });
 
@@ -403,10 +404,8 @@ app.get("/users", roleCheckMiddleware("manager"), async (req, res) => {
       filters.verified = verified === "true";
     }
 
-    if (activated === "true") {
-      filters.lastLogin = { not: null };
-    } else if (activated === "false") {
-      filters.lastLogin = null;
+    if (activated !== undefined) {
+      filters.activated = activated === "true";
     }
 
     const count = await prisma.user.count({ where: filters });
