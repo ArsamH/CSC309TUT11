@@ -1258,7 +1258,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
       if (!currentUser.suspicious) {
         await prisma.user.update({
           where: { id: customer.id },
-          data: { points: customer.points + earned },
+          data: { points: { increment: earned } },
         });
       }
 
@@ -1312,7 +1312,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
       });
       await prisma.user.update({
         where: { id: customer.id },
-        data: { points: customer.points + amount },
+        data: { points: { increment: amount } },
       });
 
       return res.status(201).json({
