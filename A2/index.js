@@ -2239,7 +2239,7 @@ app.delete(
         where: { id: eventIdNum },
       });
 
-      res.status(204).send("No Content");
+      res.status(204).send();
     } catch {
       res.status(500).json({ error: "Internal server error" });
     }
@@ -2348,6 +2348,62 @@ app.post(
       };
 
       res.status(201).json(response);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.delete(
+  "/events/:eventId/organizers/:userId",
+  roleCheckMiddleware("manager"),
+  async (req, res) => {
+    try {
+      const { eventId, userId } = req.params;
+      const eventIdNum = parseInt(eventId, 10);
+      const userIdNum = parseInt(userId, 10);
+
+      if (isNaN(eventIdNum) || isNaN(userIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventIdNum },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userIdNum },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const organizer = await prisma.eventOrganizer.findUnique({
+        where: {
+          userId_eventId: {
+            userId: userIdNum,
+            eventId: eventIdNum,
+          },
+        },
+      });
+
+      if (organizer) {
+        await prisma.eventOrganizer.delete({
+          where: {
+            userId_eventId: {
+              userId: userIdNum,
+              eventId: eventIdNum,
+            },
+          },
+        });
+      }
+
+      res.status(204).send();
     } catch {
       res.status(500).json({ error: "Internal server error" });
     }
