@@ -816,6 +816,110 @@ app.patch(
   }
 );
 
+app.post(
+  "/users/:userId/transactions",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { type, amount, remark, ...extraFields } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (type !== "transfer") {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (amount === undefined || !Number.isInteger(amount) || amount <= 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const recipientId = parseInt(userId, 10);
+      if (isNaN(recipientId)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const sender = await prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: {
+          id: true,
+          utorid: true,
+          points: true,
+          verified: true,
+        },
+      });
+
+      if (!sender) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      if (!sender.verified) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      if (sender.points < amount) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const recipient = await prisma.user.findUnique({
+        where: { id: recipientId },
+        select: {
+          id: true,
+          utorid: true,
+          points: true,
+        },
+      });
+
+      if (!recipient) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const senderTransaction = await prisma.transaction.create({
+        data: {
+          type: "transfer",
+          amount: -amount,
+          relatedId: recipient.id,
+          remark: remark || "",
+          suspicious: false,
+          userId: sender.id,
+          createdById: sender.id,
+        },
+      });
+      await prisma.transaction.create({
+        data: {
+          type: "transfer",
+          amount: amount,
+          relatedId: sender.id,
+          remark: remark || "",
+          suspicious: false,
+          userId: recipient.id,
+          createdById: sender.id,
+        },
+      });
+
+      await prisma.user.update({
+        where: { id: sender.id },
+        data: { points: { increment: -amount } },
+      });
+      await prisma.user.update({
+        where: { id: recipient.id },
+        data: { points: { increment: amount } },
+      });
+
+      res.status(201).json({
+        id: senderTransaction.id,
+        sender: sender.utorid,
+        recipient: recipient.utorid,
+        type: "transfer",
+        sent: amount,
+        remark: senderTransaction.remark,
+        createdBy: sender.utorid,
+      });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
   try {
     const {
