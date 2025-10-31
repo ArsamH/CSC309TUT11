@@ -1719,6 +1719,90 @@ app.patch(
   }
 );
 
+app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      location,
+      startTime,
+      endTime,
+      capacity,
+      points,
+      ...extraFields
+    } = req.body;
+
+    if (Object.keys(extraFields).length > 0) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    if (
+      !name ||
+      !description ||
+      !location ||
+      !startTime ||
+      !endTime ||
+      points === undefined ||
+      points <= 0 ||
+      (capacity !== undefined && capacity !== null && capacity <= 0)
+    ) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    const now = new Date();
+    if (startDate < now || endDate < now || endDate <= startDate) {
+      return res.status(400).json({ error: "Bad Request" });
+    }
+
+    const event = await prisma.event.create({
+      data: {
+        name,
+        description,
+        location,
+        startTime: startDate,
+        endTime: endDate,
+        capacity: capacity === undefined ? null : capacity,
+        points,
+        pointsAwarded: 0,
+        published: false,
+      },
+      include: {
+        organizers: {
+          include: {
+            user: {
+              select: { utorid: true },
+            },
+          },
+        },
+        guests: {
+          include: {
+            user: {
+              select: { utorid: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.status(201).json({
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      location: event.location,
+      startTime: event.startTime.toISOString(),
+      endTime: event.endTime.toISOString(),
+      capacity: event.capacity,
+      pointsRemain: event.points - event.pointsAwarded,
+      pointsAwarded: event.pointsAwarded,
+      published: event.published,
+      organizers: event.organizers.map((o) => o.user.utorid),
+      guests: event.guests.map((g) => g.user.utorid),
+    });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

@@ -48,6 +48,8 @@ model User {
   usedPromotions  UserPromotion[]
   transactions  Transaction[] @relation("UserTransactions")
   createdTransactions Transaction[] @relation("CreatedByUser")
+  organizedEvents EventOrganizer[]
+  attendedEvents  EventGuest[]
 }
 
 model Transaction {
@@ -102,4 +104,41 @@ model TransactionPromotion {
   promotion     Promotion   @relation(fields: [promotionId], references: [id], onDelete: Cascade)
 
   @@unique([transactionId, promotionId])
+}
+
+model Event {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String
+  location      String
+  startTime     DateTime
+  endTime       DateTime
+  capacity      Int?
+  points        Int
+  pointsAwarded Int      @default(0)
+  published     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  organizers    EventOrganizer[]
+  guests        EventGuest[]
+}
+
+model EventOrganizer {
+  id       Int   @id @default(autoincrement())
+  userId   Int
+  eventId  Int
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event    Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
+
+model EventGuest {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  eventId  Int
+  points   Int      @default(0)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
 }
