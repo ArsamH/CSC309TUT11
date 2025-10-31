@@ -665,6 +665,10 @@ app.post(
         return res.status(403).json({ error: "Forbidden" });
       }
 
+      if (user.points < amount) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
       const transaction = await prisma.transaction.create({
         data: {
           type: "redemption",
@@ -1055,7 +1059,7 @@ app.post(
       if (!sender.verified) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      if (sender.points < amount) {
+      if (sender.id === recipient.id) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
@@ -1072,7 +1076,7 @@ app.post(
         return res.status(404).json({ error: "Not Found" });
       }
 
-      if (sender.id === recipient.id) {
+      if (sender.points < amount) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
@@ -1240,12 +1244,12 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
               promotionId: promotionId,
             },
           });
-          const promo = promotions.find((promo) => promo.id === promoId);
+          const promo = promotions.find((p) => p.id === promotionId);
           if (promo && promo.type === "onetime") {
             await prisma.userPromotion.create({
               data: {
                 userId: customer.id,
-                promotionId: promoId,
+                promotionId: promotionId,
               },
             });
           }
@@ -1292,7 +1296,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
       });
 
       if (!relatedTransaction) {
-        return res.status(400).json({ error: "Bad Request" });
+        return res.status(404).json({ error: "Not Found" });
       }
 
       const transaction = await prisma.transaction.create({
@@ -1525,6 +1529,9 @@ app.get(
       if (transaction.spent !== null) {
         result.spent = transaction.spent;
       }
+      if (transaction.relatedId !== null) {
+        result.relatedId = transaction.relatedId;
+      }
       res.status(200).json(result);
     } catch {
       res.status(500).json({ error: "Internal server error" });
@@ -1666,7 +1673,12 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (transaction.user.points < transaction.amount) {
+      const userPoints = await prisma.user.findUnique({
+        where: { id: transaction.user.id },
+        select: { points: true },
+      });
+
+      if (!userPoints || userPoints.points < transaction.amount) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
