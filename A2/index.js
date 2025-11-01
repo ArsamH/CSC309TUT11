@@ -808,9 +808,7 @@ app.get(
           id: t.id,
           type: t.type,
           amount: t.amount,
-          promotionIds: t.promotions
-            .map((p) => p.promotionId)
-            .filter((id) => id != null),
+          promotionIds: t.promotions.map((p) => p.promotionId),
           remark: t.remark || "",
           createdBy: t.createdBy.utorid,
         };
@@ -1463,9 +1461,7 @@ app.get("/transactions", roleCheckMiddleware("manager"), async (req, res) => {
         utorid: t.user.utorid,
         amount: t.amount,
         type: t.type,
-        promotionIds: t.promotions
-          .map((p) => p.promotionId)
-          .filter((id) => id != null),
+        promotionIds: t.promotions.map((p) => p.promotionId),
         suspicious: t.suspicious,
         remark: t.remark || "",
         createdBy: t.createdBy.utorid,
@@ -1526,9 +1522,7 @@ app.get(
         utorid: transaction.user.utorid,
         type: transaction.type,
         amount: transaction.amount,
-        promotionIds: transaction.promotions
-          .map((p) => p.promotionId)
-          .filter((id) => id != null),
+        promotionIds: transaction.promotions.map((p) => p.promotionId),
         suspicious: transaction.suspicious,
         remark: transaction.remark || "",
         createdBy: transaction.createdBy.utorid,
@@ -1625,9 +1619,7 @@ app.patch(
         utorid: updatedTransaction.user.utorid,
         type: updatedTransaction.type,
         amount: updatedTransaction.amount,
-        promotionIds: updatedTransaction.promotions
-          .map((p) => p.promotionId)
-          .filter((id) => id != null),
+        promotionIds: updatedTransaction.promotions.map((p) => p.promotionId),
         suspicious: updatedTransaction.suspicious,
         remark: updatedTransaction.remark || "",
         createdBy: updatedTransaction.createdBy.utorid,
@@ -2098,11 +2090,8 @@ app.patch(
         points !== undefined &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
-        if (
-          !Number.isInteger(points) ||
-          points <= 0 ||
-          points < event.pointsAwarded
-        ) {
+        const remainingPoints = points - event.pointsAwarded;
+        if (!Number.isInteger(points) || points <= 0 || remainingPoints < 0) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.points = points;
@@ -2112,7 +2101,7 @@ app.patch(
         published !== undefined &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
-        if (published !== true) {
+        if (typeof published !== "boolean" || published !== true) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.published = published;
