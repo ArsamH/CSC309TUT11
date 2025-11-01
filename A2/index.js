@@ -1799,6 +1799,12 @@ app.get("/events", roleCheckMiddleware("regular"), async (req, res) => {
         guests: true,
       },
     });
+
+    console.log("filters:", filters);
+    console.log("events found:", events.length);
+    console.log("filtered events:", filteredEvents.length);
+    console.log("current user role:", currentUser.role);
+
     const shouldShowFull = showFull === "true";
     let filteredEvents = events;
 
@@ -2290,7 +2296,7 @@ app.post(
       });
 
       if (!user) {
-        return res.status(400).json({ error: "Bad Request" });
+        return res.status(404).json({ error: "Not Found" });
       }
 
       const isGuest = await prisma.eventGuest.findUnique({
