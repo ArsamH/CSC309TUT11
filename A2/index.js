@@ -1183,7 +1183,11 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
       }
 
       let promotions = [];
-      if (promotionIds) {
+      if (
+        promotionIds &&
+        Array.isArray(promotionIds) &&
+        promotionIds.length > 0
+      ) {
         const now = new Date();
         promotions = await prisma.promotion.findMany({
           where: {
@@ -1270,7 +1274,8 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
         spent: spent,
         earned: currentUser.suspicious ? 0 : earned,
         remark: transaction.remark,
-        promotionIds: promotionIds || [],
+        promotionIds:
+          promotionIds && Array.isArray(promotionIds) ? promotionIds : [],
         createdBy: currentUser.utorid,
       });
     }
@@ -1323,7 +1328,8 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
         type: "adjustment",
         relatedId: relatedId,
         remark: transaction.remark,
-        promotionIds: promotionIds || [],
+        promotionIds:
+          promotionIds && Array.isArray(promotionIds) ? promotionIds : [],
         createdBy: currentUser.utorid,
       });
     }
@@ -2159,7 +2165,7 @@ app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
     }
 
     const now = new Date();
-    if (startDate <= now || endDate < now || endDate <= startDate) {
+    if (startDate < now || endDate < now || endDate <= startDate) {
       return res.status(400).json({ error: "Bad Request" });
     }
 
@@ -2814,21 +2820,25 @@ app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
     };
 
     if (minSpending !== undefined) {
-      if (isNaN(minSpending) || minSpending <= 0) {
+      if (typeof minSpending !== "number" || minSpending <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.minSpending = minSpending;
     }
 
     if (rate !== undefined) {
-      if (isNaN(rate) || rate <= 0) {
+      if (typeof rate !== "number" || rate <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.rate = rate;
     }
 
     if (points !== undefined) {
-      if (isNaN(points) || points <= 0) {
+      if (
+        typeof points !== "number" ||
+        !Number.isInteger(points) ||
+        points <= 0
+      ) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.points = points;
@@ -3193,7 +3203,7 @@ app.delete(
       }
 
       const now = new Date();
-      if (promotion.startTime <= now) {
+      if (promotion.startTime < now) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
