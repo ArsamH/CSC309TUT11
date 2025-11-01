@@ -808,7 +808,9 @@ app.get(
           id: t.id,
           type: t.type,
           amount: t.amount,
-          promotionIds: t.promotions.map((p) => p.promotionId),
+          promotionIds: t.promotions
+            .map((p) => p.promotionId)
+            .filter((id) => id != null),
           remark: t.remark || "",
           createdBy: t.createdBy.utorid,
         };
@@ -1461,7 +1463,9 @@ app.get("/transactions", roleCheckMiddleware("manager"), async (req, res) => {
         utorid: t.user.utorid,
         amount: t.amount,
         type: t.type,
-        promotionIds: t.promotions.map((p) => p.promotionId),
+        promotionIds: t.promotions
+          .map((p) => p.promotionId)
+          .filter((id) => id != null),
         suspicious: t.suspicious,
         remark: t.remark || "",
         createdBy: t.createdBy.utorid,
@@ -1522,7 +1526,9 @@ app.get(
         utorid: transaction.user.utorid,
         type: transaction.type,
         amount: transaction.amount,
-        promotionIds: transaction.promotions.map((p) => p.promotionId),
+        promotionIds: transaction.promotions
+          .map((p) => p.promotionId)
+          .filter((id) => id != null),
         suspicious: transaction.suspicious,
         remark: transaction.remark || "",
         createdBy: transaction.createdBy.utorid,
@@ -1619,7 +1625,9 @@ app.patch(
         utorid: updatedTransaction.user.utorid,
         type: updatedTransaction.type,
         amount: updatedTransaction.amount,
-        promotionIds: updatedTransaction.promotions.map((p) => p.promotionId),
+        promotionIds: updatedTransaction.promotions
+          .map((p) => p.promotionId)
+          .filter((id) => id != null),
         suspicious: updatedTransaction.suspicious,
         remark: updatedTransaction.remark || "",
         createdBy: updatedTransaction.createdBy.utorid,
