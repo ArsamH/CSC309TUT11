@@ -512,34 +512,32 @@ app.patch(
       const userId = req.auth.userId;
       const { name, email, birthday, avatar, ...extraFields } = req.body;
 
-      console.log("=== UPDATE INFO DEBUG ===");
-      console.log("request body:", req.body);
-      console.log("extra fields:", extraFields);
-      console.log("file uploaded:", req.file);
-      console.log("==========================");
-
       if (Object.keys(extraFields).length > 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
       if (
-        name === undefined &&
-        email === undefined &&
-        birthday === undefined &&
-        !req.file
+        name === undefined ||
+        (name === null && email === undefined) ||
+        (email === null && birthday === undefined) ||
+        (birthday === null && !req.file)
       ) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (name !== undefined && !validateName(name)) {
+      if (name !== undefined && name !== null && !validateName(name)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (email !== undefined && !validateEmail(email)) {
+      if (email !== undefined && email !== null && !validateEmail(email)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (birthday !== undefined && !validateBirthday(birthday)) {
+      if (
+        birthday !== undefined &&
+        birthday !== null &&
+        !validateBirthday(birthday)
+      ) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
@@ -1818,13 +1816,6 @@ app.get("/events", roleCheckMiddleware("regular"), async (req, res) => {
       });
     }
 
-    console.log("=== GET EVENTS DEBUG ===");
-    console.log("filters:", filters);
-    console.log("events found:", events.length);
-    console.log("filtered events:", filteredEvents.length);
-    console.log("current user role:", currentUser.role);
-    console.log("=======================");
-
     const count = filteredEvents.length;
     const skip = (pageNumber - 1) * limitNumber;
     const paginatedEvents = filteredEvents.slice(skip, skip + limitNumber);
@@ -1985,13 +1976,6 @@ app.patch(
         ...extraFields
       } = req.body;
 
-      console.log("=== UPDATE EVENT DEBUG ===");
-      console.log("event ID:", eventId);
-      console.log("request body:", req.body);
-      console.log("points value:", points, "type:", typeof points);
-      console.log("published value:", published, "type:", typeof published);
-      console.log("========================");
-
       if (Object.keys(extraFields).length > 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
@@ -2001,14 +1985,15 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
       if (
-        name === undefined &&
-        description === undefined &&
-        location === undefined &&
-        startTime === undefined &&
-        endTime === undefined &&
-        capacity === undefined &&
-        points === undefined &&
-        published === undefined
+        name === undefined ||
+        (name === null && description === undefined) ||
+        (description === null && location === undefined) ||
+        (location === null && startTime === undefined) ||
+        (startTime === null && endTime === undefined) ||
+        (endTime === null && capacity === undefined) ||
+        (capacity === null && points === undefined) ||
+        (points === null && published === undefined) ||
+        published === null
       ) {
         return res.status(400).json({ error: "Bad Request" });
       }
@@ -2059,25 +2044,25 @@ app.patch(
         location: event.location,
       };
 
-      if (name !== undefined) {
+      if (name !== undefined && name !== null) {
         if (event.startTime < now) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.name = name;
         response.name = name;
       }
-      if (description !== undefined) {
+      if (description !== undefined && description !== null) {
         updateData.description = description;
         response.description = description;
       }
-      if (location !== undefined) {
+      if (location !== undefined && location !== null) {
         if (event.startTime < now) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.location = location;
         response.location = location;
       }
-      if (startTime !== undefined) {
+      if (startTime !== undefined && startTime !== null) {
         const newStartTime = new Date(startTime);
         if (
           isNaN(newStartTime.getTime()) ||
@@ -2090,7 +2075,7 @@ app.patch(
         response.startTime = newStartTime.toISOString();
       }
 
-      if (endTime !== undefined) {
+      if (endTime !== undefined && endTime !== null) {
         const newEndTime = new Date(endTime);
         if (
           isNaN(newEndTime.getTime()) ||
@@ -2106,7 +2091,7 @@ app.patch(
         updateData.endTime = newEndTime;
         response.endTime = newEndTime.toISOString();
       }
-      if (capacity !== undefined) {
+      if (capacity !== undefined && capacity !== null) {
         if (event.startTime < now || capacity < event.guests.length) {
           return res.status(400).json({ error: "Bad Request" });
         }
@@ -2115,6 +2100,7 @@ app.patch(
       }
       if (
         points !== undefined &&
+        points !== null &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
         if (
@@ -2129,6 +2115,7 @@ app.patch(
       }
       if (
         published !== undefined &&
+        published !== null &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
         if (published !== true) {
@@ -2167,13 +2154,19 @@ app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
       return res.status(400).json({ error: "Bad Request" });
     }
     if (
-      !name ||
-      !description ||
-      !location ||
-      !startTime ||
-      !endTime ||
+      name === undefined ||
+      name === null ||
+      description === undefined ||
+      description === null ||
+      location === undefined ||
+      location === null ||
+      startTime === undefined ||
+      startTime === null ||
+      endTime === undefined ||
+      endTime === null ||
       points === undefined ||
-      points <= 0 ||
+      points === null ||
+      (points !== undefined && points !== null && points <= 0) ||
       (capacity !== undefined && capacity !== null && capacity <= 0)
     ) {
       return res.status(400).json({ error: "Bad Request" });
@@ -2258,11 +2251,6 @@ app.delete(
         return res.status(404).json({ error: "Not Found" });
       }
 
-      console.log("=== DELETE EVENT DEBUG ===");
-      console.log("event ID:", eventIdNum);
-      console.log("event published:", event.published);
-      console.log("=========================");
-
       if (event.published) {
         return res.status(400).json({ error: "Bad Request" });
       }
@@ -2327,12 +2315,6 @@ app.post(
           },
         },
       });
-
-      console.log("=== ADD ORGANIZER DEBUG ===");
-      console.log("User ID:", user.id);
-      console.log("Event ID:", eventIdNum);
-      console.log("is already guest:", !!isGuest);
-      console.log("==========================");
 
       if (isGuest) {
         return res.status(400).json({ error: "Bad Request" });
@@ -2456,12 +2438,6 @@ app.post(
       const { eventId } = req.params;
       const { utorid, ...extraFields } = req.body;
 
-      console.log("=== ADD GUEST DEBUG ===");
-      console.log("event ID:", eventId);
-      console.log("Utorid:", utorid);
-      console.log("auth user iD:", req.auth.userId);
-      console.log("======================");
-
       if (Object.keys(extraFields).length > 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
@@ -2500,7 +2476,8 @@ app.post(
 
       if (
         !(currentUser.role === "manager" || currentUser.role === "superuser") &&
-        !isOrganizer
+        !isOrganizer &&
+        !event.published
       ) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -2525,6 +2502,14 @@ app.post(
 
       if (!guestPerson) {
         return res.status(400).json({ error: "Bad Request" });
+      }
+
+      if (
+        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
+        !isOrganizer &&
+        guestPerson.id !== currentUser.id
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const isGuestOrganizer = event.organizers.some(
@@ -2600,12 +2585,6 @@ app.delete(
 
       const now = new Date();
 
-      console.log("=== un rsvp DEBUG ===");
-      console.log("event end time:", event.endTime);
-      console.log("current time:", now);
-      console.log("event ended:", event.endTime < now);
-      console.log("====================");
-
       if (event.endTime < now) {
         return res.status(410).json({ error: "Gone" });
       }
@@ -2645,12 +2624,6 @@ app.post(
     try {
       const { eventId } = req.params;
       const { type, utorid, amount, remark, ...extraFields } = req.body;
-
-      console.log("=== award points debuyg ===");
-      console.log("utorid:", utorid);
-      console.log("amount:", amount, "Type:", typeof amount);
-      console.log("event guests count:", event?.guests?.length);
-      console.log("=========================");
 
       if (Object.keys(extraFields).length > 0) {
         return res.status(400).json({ error: "Bad Request" });
@@ -2839,17 +2812,6 @@ app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
       ...extraFields
     } = req.body;
 
-    console.log("=== CREATE PROMOTION DEBUG ===");
-    console.log("Request body:", req.body);
-    console.log("Name:", name, "empty?", !name);
-    console.log("Description:", description, "empty?", !description);
-    console.log("Type:", type);
-    console.log("MinSpending:", minSpending, "Type:", typeof minSpending);
-    console.log("Rate:", rate, "Type:", typeof rate);
-    console.log("Points:", points, "Type:", typeof points);
-    console.log("=============================");
-
-    console.log(req.body);
     if (Object.keys(extraFields).length > 0) {
       return res.status(400).json({ error: "Bad Request" });
     }
@@ -2885,25 +2847,25 @@ app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
       endTime: endDate,
     };
 
-    if (minSpending !== undefined) {
+    if (minSpending !== undefined && minSpending !== null) {
       if (typeof minSpending !== "number" || minSpending <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.minSpending = minSpending;
     }
 
-    if (rate !== undefined) {
+    if (rate !== undefined && rate !== null) {
       if (typeof rate !== "number" || rate <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.rate = rate;
     }
 
-    if (points !== undefined) {
+    if (points !== undefined && points !== null) {
       if (
         typeof points !== "number" ||
         !Number.isInteger(points) ||
-        points <= 0
+        points < 0
       ) {
         return res.status(400).json({ error: "Bad Request" });
       }
