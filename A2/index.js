@@ -2976,6 +2976,237 @@ app.get("/promotions", roleCheckMiddleware("regular"), async (req, res) => {
   }
 });
 
+app.get(
+  "/promotions/:promotionId",
+  roleCheckMiddleware("regular"),
+  async (req, res) => {
+    try {
+      const { promotionId } = req.params;
+      const promotionIdNum = parseInt(promotionId, 10);
+
+      if (isNaN(promotionIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const promotion = await prisma.promotion.findUnique({
+        where: { id: promotionIdNum },
+      });
+
+      if (!promotion) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const now = new Date();
+      if (promotion.startTime > now || promotion.endTime <= now) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const response = {
+        id: promotion.id,
+        name: promotion.name,
+        description: promotion.description,
+        type: promotion.type,
+        endTime: promotion.endTime.toISOString(),
+        minSpending: promotion.minSpending,
+        rate: promotion.rate,
+        points: promotion.points,
+      };
+
+      res.status(200).json(response);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.patch(
+  "/promotions/:promotionId",
+  roleCheckMiddleware("manager"),
+  async (req, res) => {
+    try {
+      const { promotionId } = req.params;
+      const {
+        name,
+        description,
+        type,
+        startTime,
+        endTime,
+        minSpending,
+        rate,
+        points,
+        ...extraFields
+      } = req.body;
+
+      if (Object.keys(extraFields).length > 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const promotionIdNum = parseInt(promotionId, 10);
+      if (isNaN(promotionIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      if (
+        name === undefined &&
+        description === undefined &&
+        type === undefined &&
+        startTime === undefined &&
+        endTime === undefined &&
+        minSpending === undefined &&
+        rate === undefined &&
+        points === undefined
+      ) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
+      const promotion = await prisma.promotion.findUnique({
+        where: { id: promotionIdNum },
+      });
+
+      if (!promotion) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const now = new Date();
+      const updateData = {};
+
+      const response = {
+        id: promotion.id,
+        name: promotion.name,
+        type: promotion.type,
+      };
+
+      if (startTime !== undefined) {
+        const newStartTime = new Date(startTime);
+        if (isNaN(newStartTime.getTime())) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (newStartTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.startTime = newStartTime;
+        response.startTime = newStartTime.toISOString();
+      }
+
+      if (endTime !== undefined) {
+        const newEndTime = new Date(endTime);
+        if (isNaN(newEndTime.getTime())) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (newEndTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        const actualStartTime = updateData.startTime || promotion.startTime;
+        if (newEndTime <= actualStartTime) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.endTime = newEndTime;
+        response.endTime = newEndTime.toISOString();
+      }
+
+      if (name !== undefined) {
+        if (promotion.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.name = name;
+        response.name = name;
+      }
+
+      if (description !== undefined) {
+        if (promotion.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.description = description;
+        response.description = description;
+      }
+      if (type !== undefined) {
+        if (type !== "automatic" && type !== "onetime") {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (promotion.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.type = type;
+        response.type = type;
+      }
+
+      if (minSpending !== undefined) {
+        if (promotion.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (isNaN(minSpending) || minSpending <= 0) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.minSpending = minSpending;
+        response.minSpending = minSpending;
+      }
+
+      if (rate !== undefined) {
+        if (promotion.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (isNaN(rate) || rate <= 0) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.rate = rate;
+        response.rate = rate;
+      }
+
+      if (points !== undefined) {
+        if (promotion.startTime < now) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        if (isNaN(points) || points <= 0) {
+          return res.status(400).json({ error: "Bad Request" });
+        }
+        updateData.points = points;
+        response.points = points;
+      }
+
+      await prisma.promotion.update({
+        where: { id: promotionIdNum },
+        data: updateData,
+      });
+
+      res.status(200).json(response);
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.delete(
+  "/promotions/:promotionId",
+  roleCheckMiddleware("manager"),
+  async (req, res) => {
+    try {
+      const { promotionId } = req.params;
+      const promotionIdNum = parseInt(promotionId, 10);
+
+      if (isNaN(promotionIdNum)) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+      const promotion = await prisma.promotion.findUnique({
+        where: { id: promotionIdNum },
+      });
+
+      if (!promotion) {
+        return res.status(404).json({ error: "Not Found" });
+      }
+
+      const now = new Date();
+      if (promotion.startTime <= now) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      await prisma.promotion.delete({
+        where: { id: promotionIdNum },
+      });
+
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
