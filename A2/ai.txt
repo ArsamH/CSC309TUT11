@@ -1,6 +1,11 @@
 - used AI to look over my database design in schema.prisma and find potential mistakes
+        - it specifically helped with learning junction tables
+        ie. in a many-to-many you don't need to specify @relation("joinedName") if there is only a single reference to another entity.
+            however, when you have multiple references to the same entity such as User and Transactions needing separate transactions
+            and createdTransactions, then the relation must be specified. 
 
-- used AI to help with regex for all the middleware
+- used AI to help with regex for all the middleware used through out the code
+        - slightly helped with the createsu.js seed script since I did not know the necessity of 'await prisma.$disconnect()'
 
 - used AI to implement multer middleware
 (link to transcript: https://claude.ai/share/dcfa3736-21c1-4db3-a364-a0ab3164872c)
@@ -8,3 +13,8 @@
 - used AI to learn in memory pagination 
 ie.     const skip = (pageNumber - 1) * limitNumber;
         const paginatedEvents = filteredEvents.slice(skip, skip + limitNumber); (this works just as well as skip, take)
+
+- i used AI to debug through out. I would copy the result from the MARKUS failed test case and also copy the relevant code I had written to 
+derive possible conclusions. How the AI helped here is one of two ways:
+        1. inferred possible fixes 
+        2. gave me console log statements to further debug and repeat step 1

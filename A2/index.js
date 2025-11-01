@@ -517,27 +517,23 @@ app.patch(
       }
 
       if (
-        name === undefined ||
-        (name === null && email === undefined) ||
-        (email === null && birthday === undefined) ||
-        (birthday === null && !req.file)
+        name === undefined &&
+        email === undefined &&
+        birthday === undefined &&
+        !req.file
       ) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (name !== undefined && name !== null && !validateName(name)) {
+      if (name !== undefined && !validateName(name)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (email !== undefined && email !== null && !validateEmail(email)) {
+      if (email !== undefined && !validateEmail(email)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (
-        birthday !== undefined &&
-        birthday !== null &&
-        !validateBirthday(birthday)
-      ) {
+      if (birthday !== undefined && !validateBirthday(birthday)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
@@ -1187,11 +1183,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
       }
 
       let promotions = [];
-      if (
-        promotionIds &&
-        Array.isArray(promotionIds) &&
-        promotionIds.length > 0
-      ) {
+      if (promotionIds) {
         const now = new Date();
         promotions = await prisma.promotion.findMany({
           where: {
@@ -1278,8 +1270,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
         spent: spent,
         earned: currentUser.suspicious ? 0 : earned,
         remark: transaction.remark,
-        promotionIds:
-          promotionIds && Array.isArray(promotionIds) ? promotionIds : [],
+        promotionIds: promotionIds || [],
         createdBy: currentUser.utorid,
       });
     }
@@ -1332,8 +1323,7 @@ app.post("/transactions", roleCheckMiddleware("cashier"), async (req, res) => {
         type: "adjustment",
         relatedId: relatedId,
         remark: transaction.remark,
-        promotionIds:
-          promotionIds && Array.isArray(promotionIds) ? promotionIds : [],
+        promotionIds: promotionIds || [],
         createdBy: currentUser.utorid,
       });
     }
@@ -1803,7 +1793,6 @@ app.get("/events", roleCheckMiddleware("regular"), async (req, res) => {
         guests: true,
       },
     });
-
     const shouldShowFull = showFull === "true";
     let filteredEvents = events;
 
@@ -1985,15 +1974,14 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
       if (
-        name === undefined ||
-        (name === null && description === undefined) ||
-        (description === null && location === undefined) ||
-        (location === null && startTime === undefined) ||
-        (startTime === null && endTime === undefined) ||
-        (endTime === null && capacity === undefined) ||
-        (capacity === null && points === undefined) ||
-        (points === null && published === undefined) ||
-        published === null
+        name === undefined &&
+        description === undefined &&
+        location === undefined &&
+        startTime === undefined &&
+        endTime === undefined &&
+        capacity === undefined &&
+        points === undefined &&
+        published === undefined
       ) {
         return res.status(400).json({ error: "Bad Request" });
       }
@@ -2044,25 +2032,25 @@ app.patch(
         location: event.location,
       };
 
-      if (name !== undefined && name !== null) {
+      if (name !== undefined) {
         if (event.startTime < now) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.name = name;
         response.name = name;
       }
-      if (description !== undefined && description !== null) {
+      if (description !== undefined) {
         updateData.description = description;
         response.description = description;
       }
-      if (location !== undefined && location !== null) {
+      if (location !== undefined) {
         if (event.startTime < now) {
           return res.status(400).json({ error: "Bad Request" });
         }
         updateData.location = location;
         response.location = location;
       }
-      if (startTime !== undefined && startTime !== null) {
+      if (startTime !== undefined) {
         const newStartTime = new Date(startTime);
         if (
           isNaN(newStartTime.getTime()) ||
@@ -2075,7 +2063,7 @@ app.patch(
         response.startTime = newStartTime.toISOString();
       }
 
-      if (endTime !== undefined && endTime !== null) {
+      if (endTime !== undefined) {
         const newEndTime = new Date(endTime);
         if (
           isNaN(newEndTime.getTime()) ||
@@ -2091,7 +2079,7 @@ app.patch(
         updateData.endTime = newEndTime;
         response.endTime = newEndTime.toISOString();
       }
-      if (capacity !== undefined && capacity !== null) {
+      if (capacity !== undefined) {
         if (event.startTime < now || capacity < event.guests.length) {
           return res.status(400).json({ error: "Bad Request" });
         }
@@ -2100,7 +2088,6 @@ app.patch(
       }
       if (
         points !== undefined &&
-        points !== null &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
         if (
@@ -2115,7 +2102,6 @@ app.patch(
       }
       if (
         published !== undefined &&
-        published !== null &&
         (currentUser.role === "manager" || currentUser.role === "superuser")
       ) {
         if (published !== true) {
@@ -2154,19 +2140,13 @@ app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
       return res.status(400).json({ error: "Bad Request" });
     }
     if (
-      name === undefined ||
-      name === null ||
-      description === undefined ||
-      description === null ||
-      location === undefined ||
-      location === null ||
-      startTime === undefined ||
-      startTime === null ||
-      endTime === undefined ||
-      endTime === null ||
+      !name ||
+      !description ||
+      !location ||
+      !startTime ||
+      !endTime ||
       points === undefined ||
-      points === null ||
-      (points !== undefined && points !== null && points <= 0) ||
+      points <= 0 ||
       (capacity !== undefined && capacity !== null && capacity <= 0)
     ) {
       return res.status(400).json({ error: "Bad Request" });
@@ -2304,7 +2284,7 @@ app.post(
       });
 
       if (!user) {
-        return res.status(404).json({ error: "Not Found" });
+        return res.status(400).json({ error: "Bad Request" });
       }
 
       const isGuest = await prisma.eventGuest.findUnique({
@@ -2476,8 +2456,7 @@ app.post(
 
       if (
         !(currentUser.role === "manager" || currentUser.role === "superuser") &&
-        !isOrganizer &&
-        !event.published
+        !isOrganizer
       ) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -2502,14 +2481,6 @@ app.post(
 
       if (!guestPerson) {
         return res.status(400).json({ error: "Bad Request" });
-      }
-
-      if (
-        !(currentUser.role === "manager" || currentUser.role === "superuser") &&
-        !isOrganizer &&
-        guestPerson.id !== currentUser.id
-      ) {
-        return res.status(403).json({ error: "Forbidden" });
       }
 
       const isGuestOrganizer = event.organizers.some(
@@ -2584,7 +2555,6 @@ app.delete(
       }
 
       const now = new Date();
-
       if (event.endTime < now) {
         return res.status(410).json({ error: "Gone" });
       }
@@ -2832,7 +2802,7 @@ app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
       return res.status(400).json({ error: "Bad Request" });
     }
 
-    if (startDate < now) {
+    if (startDate <= now) {
       return res.status(400).json({ error: "Bad Request" });
     }
     if (endDate <= startDate) {
@@ -2847,26 +2817,22 @@ app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
       endTime: endDate,
     };
 
-    if (minSpending !== undefined && minSpending !== null) {
-      if (typeof minSpending !== "number" || minSpending <= 0) {
+    if (minSpending !== undefined) {
+      if (isNaN(minSpending) || minSpending <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.minSpending = minSpending;
     }
 
-    if (rate !== undefined && rate !== null) {
-      if (typeof rate !== "number" || rate <= 0) {
+    if (rate !== undefined) {
+      if (isNaN(rate) || rate <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.rate = rate;
     }
 
-    if (points !== undefined && points !== null) {
-      if (
-        typeof points !== "number" ||
-        !Number.isInteger(points) ||
-        points < 0
-      ) {
+    if (points !== undefined) {
+      if (!Number.isInteger(points) || points <= 0) {
         return res.status(400).json({ error: "Bad Request" });
       }
       promotionDataBuilder.points = points;
@@ -3192,8 +3158,10 @@ app.patch(
         if (promotion.startTime < now) {
           return res.status(400).json({ error: "Bad Request" });
         }
-        if (isNaN(points) || points <= 0) {
-          return res.status(400).json({ error: "Bad Request" });
+        if (points !== null) {
+          if (isNaN(points) || !Number.isInteger(points) || points <= 0) {
+            return res.status(400).json({ error: "Bad Request" });
+          }
         }
         updateData.points = points;
         response.points = points;
@@ -3231,7 +3199,7 @@ app.delete(
       }
 
       const now = new Date();
-      if (promotion.startTime < now) {
+      if (promotion.startTime <= now) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
