@@ -2159,7 +2159,7 @@ app.post("/events", roleCheckMiddleware("manager"), async (req, res) => {
     }
 
     const now = new Date();
-    if (startDate < now || endDate < now || endDate <= startDate) {
+    if (startDate <= now || endDate < now || endDate <= startDate) {
       return res.status(400).json({ error: "Bad Request" });
     }
 
@@ -2484,7 +2484,7 @@ app.post(
       }
 
       const isGuestOrganizer = event.organizers.some(
-        (organizer) => organizer.userId === guestUser.id
+        (organizer) => organizer.userId === guestPerson.id
       );
 
       if (isGuestOrganizer) {
@@ -2757,7 +2757,7 @@ app.post(
 
         await prisma.event.update({
           where: { id: eventIdNum },
-          data: { pointsAwarded: { increment: totalAmount } },
+          data: { pointsAwarded: { increment: amount } },
         });
 
         res.status(201).json(transactions);
@@ -2782,6 +2782,7 @@ app.post("/promotions", roleCheckMiddleware("manager"), async (req, res) => {
       ...extraFields
     } = req.body;
 
+    console.log(req.body);
     if (Object.keys(extraFields).length > 0) {
       return res.status(400).json({ error: "Bad Request" });
     }
