@@ -555,6 +555,10 @@ app.patch(
         updateData.avatarUrl = `/uploads/${req.file.filename}`;
       }
 
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "Bad Request" });
+      }
+
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: updateData,
@@ -581,7 +585,6 @@ app.patch(
       });
     } catch (error) {
       if (error instanceof multer.MulterError) {
-        console.log("multer error");
         return res.status(400).json({ error: "Bad Request" });
       }
 
