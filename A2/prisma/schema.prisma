@@ -1,0 +1,144 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RoleType {
+  regular
+  cashier
+  manager
+  superuser
+}
+
+enum TransactionType {
+  purchase
+  redemption
+  adjustment
+  event
+  transfer
+}
+
+enum PromotionType {
+  automatic
+  onetime
+}
+
+model User {
+  id            Int           @id @default(autoincrement())
+  utorid        String        @unique
+  name          String
+  email         String        @unique
+  birthday      DateTime?
+  role          RoleType      @default(regular)
+  points        Int           @default(0)
+  verified      Boolean       @default(false)
+  suspicious    Boolean       @default(false)
+  activated     Boolean       @default(false)
+  passwordHash  String?
+  createdAt     DateTime      @default(now())
+  lastLogin     DateTime?
+  expiresAt     DateTime?
+  
+  resetToken    String?       @unique
+  avatarUrl     String?
+  usedPromotions  UserPromotion[]
+  transactions  Transaction[] @relation("UserTransactions")
+  createdTransactions Transaction[] @relation("CreatedByUser")
+  organizedEvents EventOrganizer[]
+  attendedEvents  EventGuest[]
+}
+
+model Transaction {
+  id            Int              @id @default(autoincrement())
+  type          TransactionType
+  amount        Int
+  spent         Float?
+  redeemed      Int?
+  relatedId     Int?
+  remark        String?
+  suspicious    Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  userId        Int
+  createdById   Int
+  user          User             @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy     User             @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: Cascade)
+  promotions    TransactionPromotion[]
+}
+
+model Promotion {
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String
+  type         PromotionType
+  startTime    DateTime
+  endTime      DateTime
+  minSpending  Float?
+  rate         Float?
+  points       Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  usedBy       UserPromotion[]
+  transactions TransactionPromotion[]
+}
+
+model UserPromotion {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  promotionId  Int
+  usedAt       DateTime   @default(now())
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promotion    Promotion  @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promotionId])
+}
+
+model TransactionPromotion {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  promotionId   Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  promotion     Promotion   @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, promotionId])
+}
+
+model Event {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String
+  location      String
+  startTime     DateTime
+  endTime       DateTime
+  capacity      Int?
+  points        Int
+  pointsAwarded Int      @default(0)
+  published     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  organizers    EventOrganizer[]
+  guests        EventGuest[]
+}
+
+model EventOrganizer {
+  id       Int   @id @default(autoincrement())
+  userId   Int
+  eventId  Int
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event    Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
+
+model EventGuest {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  eventId  Int
+  points   Int      @default(0)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
