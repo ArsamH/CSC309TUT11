@@ -542,13 +542,13 @@ app.patch(
       }
 
       const updateData = {};
-      if (name !== undefined) {
+      if (name !== undefined && name !== null) {
         updateData.name = name;
       }
-      if (email !== undefined) {
+      if (email !== undefined && email !== null) {
         updateData.email = email;
       }
-      if (birthday !== undefined) {
+      if (birthday !== undefined && birthday !== null) {
         updateData.birthday = new Date(birthday);
       }
       if (req.file) {
@@ -581,6 +581,7 @@ app.patch(
       });
     } catch (error) {
       if (error instanceof multer.MulterError) {
+        console.log("multer error");
         return res.status(400).json({ error: "Bad Request" });
       }
 
