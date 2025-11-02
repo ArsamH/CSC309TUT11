@@ -525,15 +525,19 @@ app.patch(
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (name !== undefined && !validateName(name)) {
+      if (name !== undefined && name !== null && !validateName(name)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (email !== undefined && !validateEmail(email)) {
+      if (email !== undefined && email !== null && !validateEmail(email)) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
-      if (birthday !== undefined && !validateBirthday(birthday)) {
+      if (
+        birthday !== undefined &&
+        birthday !== null &&
+        !validateBirthday(birthday)
+      ) {
         return res.status(400).json({ error: "Bad Request" });
       }
 
