@@ -538,21 +538,17 @@ app.patch(
       }
 
       const updateData = {};
-      if (name !== undefined && name !== null) {
+      if (name !== undefined) {
         updateData.name = name;
       }
-      if (email !== undefined && email !== null) {
+      if (email !== undefined) {
         updateData.email = email;
       }
-      if (birthday !== undefined && birthday !== null) {
+      if (birthday !== undefined) {
         updateData.birthday = new Date(birthday);
       }
       if (req.file) {
         updateData.avatarUrl = `/uploads/${req.file.filename}`;
-      }
-
-      if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({ error: "Bad Request" });
       }
 
       const updatedUser = await prisma.user.update({
