@@ -1,0 +1,55 @@
+.city-card {
+    background: white;
+    color: #45505e;
+    border-radius: 10px;
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    text-align: center;
+    transition: transform 0.2s ease-in-out;
+}
+
+.city-card:hover {
+    transform: scale(1.05);
+}
+
+/* Remove button positioned at the top-right */
+.city-card .remove-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    font-weight: bold;
+    color: #e74c3c;
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+}
+
+.city-card .remove-btn:hover {
+    color: #c0392b;
+}
+
+.city-content {
+    margin: 10px 0 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.city-content h2 {
+    margin-bottom: 5px;
+    font-size: 22px;
+    color: #4e53b1;
+}
+
+.city-content .temperature {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}

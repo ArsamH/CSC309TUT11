@@ -1,0 +1,92 @@
+dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -100%);
+    border: none;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 320px;
+    background-color: #ffffff;
+    color: #45505e;
+    font-family: inherit;
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #d1d9e6;
+}
+
+.dialog-header a {
+    font-size: 18px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+}
+
+.dialog-header a:hover {
+    color: #4e53b1;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+input {
+    padding: 10px;
+    border: 1px solid #d1d9e6;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #45505e;
+    background-color: #f9fafb;
+    outline: none;
+    transition: border 0.2s ease-in-out;
+}
+
+input:focus {
+    border-color: #4e53b1;
+}
+
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+button[type="submit"] {
+    background-color: #4e53b1;
+    color: white;
+}
+
+button[type="submit"]:hover {
+    background-color: #3b4091;
+}
+
+button[type="button"] {
+    background-color: #d1d9e6;
+    color: #45505e;
+}
+
+button[type="button"]:hover {
+    background-color: #bcc5d4;
+}
