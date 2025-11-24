@@ -1,0 +1,53 @@
+form {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    max-width: 520px;
+    width: 100%;
+    gap: 15px;
+}
+
+form label {
+    text-align: right;
+    align-self: center;
+}
+
+form input {
+    padding: 8px;
+    font-size: 1rem;
+}
+
+form .btn-container,
+form .error {
+    grid-column: span 2;
+    text-align: center;
+}
+
+.btn-container > * {
+    padding: 10px;
+    font-size: 1rem;
+    background-color: #4a4e69;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.btn-container > *:hover {
+    background-color: #6d6875;
+}
+
+@media (max-width: 400px) {
+    form {
+        grid-template-columns: 1fr;
+    }
+
+    form label {
+        text-align: left;
+        margin-bottom: -12px;   /* pull up */
+    }
+
+    form .btn-container,
+    form .error {
+        grid-column: auto;
+    }
+}
