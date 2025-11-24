@@ -1,0 +1,25 @@
+main .row {
+    display: flex;
+    list-style: none;
+    gap: 20px;
+}
+
+main a {
+    text-decoration: none;
+    text-align: center;
+    font-size: 1.5rem;
+    color: #fff;
+    background-color: #4a4e69;
+    padding: 10px 20px;
+    border-radius: 5px;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+}
+
+main a:hover {
+    background-color: #6d6875;
+}
+
+main a:active {
+    transform: translate(1px, 1px);
+}

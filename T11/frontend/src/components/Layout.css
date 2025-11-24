@@ -1,0 +1,73 @@
+header {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    background-color: #4a4e69;  
+    padding: 10px;
+    text-align: center;
+}
+
+header > * {
+    background-color: inherit;
+    border: none;  
+    text-decoration: none;
+    padding: 10px 20px;
+}
+
+header > :first-child {
+    margin-right: auto;
+}
+
+header > a {
+    color: #eee;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+header > a:hover {
+    color: white;
+}
+
+header > .user {
+    color: #ddd;
+    font-weight: normal;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px;
+    gap: 40px;
+}
+
+main h2 {
+    font-size: 48px;
+    text-align: center;
+}
+
+main h3 {
+    font-size: 40px;
+    text-align: center;
+}
+
+footer {
+    background-color: #4a4e69;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+}
+
+@media (max-width: 400px) {
+    main {
+        padding: 20px 10px;
+        gap: 20px;
+    }
+
+    main h2 {
+        font-size: 36px;
+    }
+}
